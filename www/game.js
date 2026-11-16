@@ -693,9 +693,11 @@
         state.lanternTotal++;
         const fp = riverAt(lw);
         let x;
-        if (fp.island > 10) {
+        if (fp.island > 2) {
+          // In a split: put it in the middle of a channel (never on the island),
+          // and never in a blocked channel, before or behind the log.
           let side = lanternRng() < 0.5 ? -1 : 1;
-          if (blockers.some((b) => b.side === side && Math.abs(b.w - lw) < 400)) side = -side;
+          if (blockers.some((b) => b.side === side && lw > b.w - 350 && lw < b.w + 700)) side = -side;
           x = channelCenter(lw, side);
         } else {
           x = fp.x + (lanternRng() - 0.5) * fp.width * 0.5;
@@ -1388,6 +1390,15 @@
     ctx.beginPath(); ctx.arc(x, y, r - 2.5, 0, Math.PI * 2); ctx.stroke();
   }
 
+  function crateIcon(x, y) {
+    ctx.fillStyle = '#9a6a3a';
+    ctx.fillRect(x - 6, y - 6, 12, 12);
+    ctx.strokeStyle = '#5e3d1f'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 6, y - 6, 12, 12);
+    ctx.strokeStyle = '#d9b26b'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.stroke();
+  }
+
   function coinBadge(x, y) {
     const label = String(save.coins);
     ctx.font = `700 17px ${UI_FONT}`;
@@ -1716,7 +1727,7 @@
       text(String(score()), W / 2, 46, 40);
       text(`Stage ${state.level}`, 14, 30, 14, C.warm, 'left', '700');
     }
-    coin(W - 104, 30, 6);
+    crateIcon(W - 104, 30);
     text(String(state.lanterns), W - 92, 31, 14, C.warm, 'left', '700');
     // pause button (handled in onDown, not in the buttons list, since play input is separate)
     const pb = PAUSE_BTN;
