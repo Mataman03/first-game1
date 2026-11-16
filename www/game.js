@@ -91,7 +91,6 @@
     { id: 'memory', name: 'Sharper memory', desc: 'lit spots fade 20% slower', costs: [25, 50, 100] },
     { id: 'lamp', name: 'Brighter boat lamp', desc: '+25% light around the boat', costs: [20, 40, 80] },
   ];
-  const JACKET = { name: 'Life jacket', desc: 'saves you from one crash', cost: 40, max: 3 };
   const BOATS = [
     { id: 'wood', name: 'Rowboat', cost: 0, hull: '#8a5a33', deck: '#b07a46', seat: '#6e4626' },
     { id: 'red', name: 'Red runner', cost: 60, hull: '#9e2f2a', deck: '#e8e2d6', seat: '#b8463e' },
@@ -106,7 +105,7 @@
   function loadSave() {
     const base = {
       coins: 0, best: 0, bestLevel: 1, runs: 0, lanternsTotal: 0,
-      upgrades: { spot: 0, memory: 0, lamp: 0 }, jackets: 0,
+      upgrades: { spot: 0, memory: 0, lamp: 0 },
       boats: ['wood'], boat: 'wood', top: [], stars: [],
     };
     try {
@@ -338,7 +337,7 @@
     screen: 'menu', // 'menu' | 'how' | 'shop' | 'scores' | 'play' | 'over'
     scoresTab: 'device',
     distance: 0, speed: 95, level: 1, params: null,
-    bonus: 0, lanterns: 0, newBest: false, coinsEarned: 0, jacketsUsed: 0,
+    bonus: 0, lanterns: 0, newBest: false, coinsEarned: 0,
     boatX: W / 2, boatTilt: 0, invuln: 0,
     steerId: null, joy: null, // joy: { ox, oy, kx, ky } origin and knob offset
     boost: 0,
@@ -347,7 +346,7 @@
     marks: [], foam: [], lanternsList: [], nextLanternW: LANTERN_EVERY, popups: [],
     edge: 0, warnTimer: 0, banner: null, reason: '',
     time: 0, overAt: 0, shake: 0, playTime: 0,
-    toast: null,
+    toast: null, press: null, pendingTap: null,
     mode: 'endless', levelIdx: 0, lanternTotal: 0, levelStars: 0, firstClear: false,
   };
   state.params = endlessParams(1);
@@ -380,7 +379,7 @@
     resetWorld();
     Object.assign(state, {
       screen: 'play', distance: 0, level: 1, params: p, speed: p.speed,
-      bonus: 0, lanterns: 0, lanternTotal: 0, newBest: false, coinsEarned: 0, jacketsUsed: 0,
+      bonus: 0, lanterns: 0, lanternTotal: 0, newBest: false, coinsEarned: 0,
       boatX: W / 2, boatTilt: 0, invuln: 0, marks: [], foam: [], boost: 0,
       lanternsList: [], nextLanternW: LANTERN_EVERY, popups: [], edge: 0, reason: '', playTime: 0,
       banner, levelStars: 0, firstClear: false,
@@ -409,23 +408,6 @@
 
   function crash(reason) {
     if (!playing() || state.invuln > 0) return;
-    if (save.jackets > 0) {
-      // Life jacket: put the boat back in the middle of an open channel
-      save.jackets--;
-      state.jacketsUsed++;
-      persist();
-      const w = state.distance;
-      let side = state.boatX < riverAt(w).x ? -1 : 1;
-      if (blockers.some((b) => b.side === side && b.w > w - 20 && b.w < w + 260)) side = -side;
-      state.boatX = channelCenter(w, side);
-      state.boatTilt = 0;
-      state.invuln = 2;
-      state.shake = 8;
-      state.banner = { text: 'Life jacket used!', sub: save.jackets ? `${save.jackets} left` : 'That was your last one', age: 0 };
-      sfx.saved();
-      vibrate([60, 40, 60]);
-      return;
-    }
     state.screen = 'over';
     state.reason = reason;
     state.overAt = state.time;
@@ -458,7 +440,6 @@
   let buttons = [];
   function go(screen) {
     state.screen = screen;
-    sfx.click();
     if (screen === 'scores' && state.scoresTab === 'everyone') loadLeaderboard();
   }
 
@@ -471,13 +452,6 @@
     if (save.coins < cost) { sfx.nope(); toast(`You need ${cost - save.coins} more coins`); return; }
     save.coins -= cost;
     save.upgrades[u.id]++;
-    persist(); sfx.buy(); vibrate(20);
-  }
-  function buyJacket() {
-    if (save.jackets >= JACKET.max) { sfx.nope(); toast(`You can carry ${JACKET.max} at most`); return; }
-    if (save.coins < JACKET.cost) { sfx.nope(); toast(`You need ${JACKET.cost - save.coins} more coins`); return; }
-    save.coins -= JACKET.cost;
-    save.jackets++;
     persist(); sfx.buy(); vibrate(20);
   }
   function tapBoat(b) {
@@ -500,13 +474,19 @@
     const p = toGame(e);
     try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
+    if (playing() && hit(p, PAUSE_BTN)) { pause(); return; }
     if (!playing()) {
       if ((state.screen === 'over' || state.screen === 'win') && state.time - state.overAt < 0.6) return;
+      if (state.pendingTap) return;
       for (const b of buttons) {
-        if (!b.disabled && p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) { b.onTap(); break; }
+        if (!b.disabled && hit(p, b)) {
+          state.press = { x: b.x, y: b.y, w: b.w, h: b.h, fn: b.onTap, id: e.pointerId, t: state.time, px: p.x, py: p.y, up: null };
+          sfx.click();
+          vibrate(8);
+          break;
+        }
       }
-      // A fresh run starts in the same tap: let that finger steer or light right away
-      if (!playing()) return;
+      return;
     }
 
     const isSteer = !hasTouch || e.pointerType === 'mouse' || p.y >= PAD_TOP;
@@ -525,6 +505,20 @@
     }
   }
 
+  const PAUSE_BTN = { x: W - 54, y: 10, w: 44, h: 40 };
+  function pause() {
+    if (!playing()) return;
+    state.screen = 'paused';
+    state.steerId = null; state.joy = null;
+    state.lightId = null; state.finger = null;
+    sfx.click();
+  }
+  function resume() {
+    state.screen = 'play';
+    last = performance.now();
+  }
+  const hit = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+
   function setKnob(p) {
     const j = state.joy;
     if (!j) return;
@@ -536,6 +530,11 @@
 
   function onMove(e) {
     const p = toGame(e);
+    const pr = state.press;
+    if (pr && pr.up == null && e.pointerId === pr.id &&
+        !hit(p, { x: pr.x - 12, y: pr.y - 12, w: pr.w + 24, h: pr.h + 24 })) {
+      state.press = null; // slid off the button: cancel
+    }
     if (e.pointerId === state.steerId) {
       setKnob(p);
     } else if (e.pointerId === state.lightId) {
@@ -544,6 +543,11 @@
   }
 
   function onUp(e) {
+    const pr = state.press;
+    if (pr && pr.up == null && e.pointerId === pr.id) {
+      pr.up = state.time;
+      state.pendingTap = { fn: pr.fn, at: state.time + 0.1 }; // let the press show before the screen changes
+    }
     if (e.pointerId === state.steerId) { state.steerId = null; state.joy = null; } // the boat keeps going straight
     if (e.pointerId === state.lightId) { state.lightId = null; state.finger = null; }
   }
@@ -556,11 +560,11 @@
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'Space' && !e.repeat && (state.screen === 'menu' || state.screen === 'over')) startGame(state.screen === 'menu' ? 'endless' : state.mode);
-    if (e.code === 'Escape' && !playing()) go('menu');
+    if (e.code === 'Escape') { if (playing()) pause(); else if (state.screen === 'paused') resume(); else go('menu'); }
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-  const menuSweep = () => !playing() && state.screen !== 'over' && state.screen !== 'win';
+  const menuSweep = () => !playing() && !['over', 'win', 'paused'].includes(state.screen);
   function spotTarget() {
     if (menuSweep()) return { x: W / 2 + Math.sin(state.time * 0.55) * 120, y: 330 + Math.sin(state.time * 0.9) * 150 };
     if (state.finger) return { x: state.finger.x, y: Math.max(20, state.finger.y - HELI_OFFSET) };
@@ -571,6 +575,12 @@
   // ---------- Update ----------
   function update(dt) {
     state.time += dt;
+    if (state.pendingTap && state.time >= state.pendingTap.at) {
+      const fn = state.pendingTap.fn;
+      state.pendingTap = null;
+      fn();
+    }
+    if (state.press && state.press.up != null && state.time - state.press.up > 0.5) state.press = null;
     if (state.banner) { state.banner.age += dt; if (state.banner.age > 2.4) state.banner = null; }
     if (state.toast) { state.toast.age += dt; if (state.toast.age > 2) state.toast = null; }
 
@@ -677,7 +687,7 @@
         }
       }
       state.lanternsList = state.lanternsList.filter((ln) => ln.alive && toScreenY(ln.w) < H + 30);
-    } else if (state.screen !== 'over' && state.screen !== 'win') {
+    } else if (!['over', 'win', 'paused'].includes(state.screen)) {
       state.distance += 30 * dt; // gentle drift behind the menus
     }
 
@@ -931,10 +941,6 @@
     ctx.beginPath(); ctx.arc(0, 1, 5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#c6962a';
     ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
-    if (state.jacketsUsed > 0 || (save.jackets > 0 && playing())) {
-      ctx.strokeStyle = '#ff7a2f'; ctx.lineWidth = 1.5; // life jacket on
-      ctx.beginPath(); ctx.arc(0, 1, 5.5, 0, Math.PI * 2); ctx.stroke();
-    }
     ctx.fillStyle = '#ffe9a8';
     ctx.beginPath(); ctx.arc(0, -18, 1.8, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -973,7 +979,7 @@
   }
 
   function drawDarkness() {
-    const amb = playing() ? state.params.ambient : menuSweep() ? 0.8 : 0.55;
+    const amb = playing() || state.screen === 'paused' ? state.params.ambient : menuSweep() ? 0.8 : 0.55;
     dctx.globalCompositeOperation = 'source-over';
     dctx.clearRect(0, 0, W, H);
     dctx.fillStyle = `rgba(2,4,12,${amb})`;
@@ -988,7 +994,7 @@
       dctx.fillStyle = g;
       dctx.beginPath(); dctx.arc(x, y, r, 0, Math.PI * 2); dctx.fill();
     };
-    if (playing()) {
+    if (playing() || state.screen === 'paused') {
       const mem = state.params.memory;
       for (const m of state.marks) {
         const a = 1 - (state.time - m.t) / mem;
@@ -1113,8 +1119,43 @@
   }
 
   // Buttons are planks. opts: primary, disabled, size, rot, sub (small text on the right), align
+  // How pressed a button is right now: 1 while the finger is on it, easing back after release
+  function pressAmount(x, y, w, h) {
+    const p = state.press;
+    if (!p || p.x !== x || p.y !== y || p.w !== w || p.h !== h) return 0;
+    return p.up == null ? 1 : Math.max(0, 1 - (state.time - p.up) / 0.14);
+  }
+  // Darken the pressed area and send a ripple out from the finger
+  function pressFx(x, y, w, h, rot = 0, amount = 1) {
+    const p = state.press;
+    if (!p) return;
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(rot);
+    ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.clip();
+    ctx.fillStyle = `rgba(0,0,0,${0.2 * amount})`;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    const age = state.time - p.t;
+    const r = 12 + age * 520;
+    const a = Math.max(0, 0.45 - age * 0.9);
+    if (a > 0) {
+      ctx.fillStyle = `rgba(255,236,190,${a})`;
+      ctx.beginPath(); ctx.arc(p.px - (x + w / 2), p.py - (y + h / 2), r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function button(x, y, w, h, label, onTap, opts = {}) {
     buttons.push({ x, y, w, h, onTap, disabled: opts.disabled });
+    const pr = opts.disabled ? 0 : pressAmount(x, y, w, h);
+    ctx.save();
+    if (pr) {
+      // pushed in: a little smaller and lower, as if pressed into the post
+      const cx = x + w / 2, cy = y + h / 2;
+      ctx.translate(cx, cy + 3 * pr);
+      ctx.scale(1 - 0.04 * pr, 1 - 0.04 * pr);
+      ctx.translate(-cx, -cy);
+    }
     const kind = opts.disabled ? 'dead' : opts.primary ? 'paint' : 'wood';
     const rot = opts.rot || 0;
     plankShape(x + w / 2, y + h / 2, w, h, rot, kind, x * 0.13 + y * 0.07);
@@ -1153,6 +1194,8 @@
       ctx.fillText(opts.sub, w / 2 - 24, 2);
     }
     try { ctx.letterSpacing = '0px'; } catch { /* ignore */ }
+    ctx.restore();
+    if (pr) pressFx(x, y, w, h, opts.rot || 0, pr);
     ctx.restore();
   }
 
@@ -1254,7 +1297,6 @@
     ctx.fillStyle = '#2b2118';
     ctx.fillRect(lx - 7, ly + 6, 14, 3);
 
-    if (save.jackets > 0) text(`LIFE JACKETS ×${save.jackets}`, W - 18, 600, 13, C.soft, 'right', '700');
   }
 
   function star(x, y, r, on) {
@@ -1270,6 +1312,7 @@
   }
 
   // Levels: a map of the river with a numbered buoy for each level, start at the bottom
+  const right0 = (x) => x < W / 2;
   function levelNode(i) {
     return { x: W / 2 + Math.sin(i * 1.15 + 0.4) * 92, y: 590 - i * 51 };
   }
@@ -1315,17 +1358,25 @@
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI * 2); ctx.fill();
       }
-      // buoy: striped float
-      ctx.save();
-      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.clip();
-      ctx.fillStyle = !open ? '#4a4641' : done ? '#2f7a4a' : '#b8382c';
-      ctx.fillRect(x - 18, y - 18, 36, 36);
-      ctx.fillStyle = !open ? '#6a655e' : '#efe2bf';
-      ctx.fillRect(x - 18, y - 5, 36, 10);
-      ctx.restore();
+      // buoy: white = open, green = done, grey = locked. Shrinks a little while pressed.
+      const bx = right0(x) ? x - 26 : x - 124;
+      const pr = pressAmount(bx, y - 24, 150, 48);
+      const r = 18 * (1 - 0.12 * pr);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath(); ctx.arc(x + 2, y + 3, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = !open ? '#57524c' : done ? '#3f8f58' : '#f3ecdb';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.35, r * 0.35, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.stroke();
-      text(open ? String(i + 1) : '–', x, y + 1, 14, open ? '#1c120a' : '#2a2724', 'center', '700');
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+      if (pr) { ctx.fillStyle = `rgba(0,0,0,${0.2 * pr})`; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+      if (open) text(String(i + 1), x, y + 1, 15, done ? '#f3ecdb' : '#2a1a0c', 'center', '700');
+      else { // little padlock
+        ctx.strokeStyle = '#2a2724'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y - 2, 4, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = '#2a2724'; ctx.fillRect(x - 6, y - 2, 12, 9);
+      }
 
       const right = x < W / 2;
       const tx = right ? x + 28 : x - 28;
@@ -1399,14 +1450,6 @@
       y += 60;
     }
     y += 8;
-    text('ITEMS', x, y, 12, C.dim, 'left', '700');
-    y += 12;
-    panel(x, y, w, 52);
-    text(JACKET.name, x + 12, y + 18, 15, '#fff', 'left', '700');
-    text(`${JACKET.desc} · have ${save.jackets}/${JACKET.max}`, x + 12, y + 36, 12, C.soft, 'left', '500');
-    button(x + w - 92, y + 10, 82, 32, save.jackets >= JACKET.max ? 'FULL' : String(JACKET.cost), buyJacket,
-      { size: 14, disabled: save.jackets >= JACKET.max, primary: save.jackets < JACKET.max && save.coins >= JACKET.cost, coin: save.jackets < JACKET.max });
-    y += 68;
     text('BOATS', x, y, 12, C.dim, 'left', '700');
     y += 12;
     const cw = (w - 8 * (BOATS.length - 1)) / BOATS.length;
@@ -1414,12 +1457,14 @@
       const bx = x + i * (cw + 8);
       const owned = save.boats.includes(b.id);
       const on = save.boat === b.id;
-      panel(bx, y, cw, 112);
+      const bpr = pressAmount(bx, y, cw, 112);
+      panel(bx, y + 2 * bpr, cw, 112);
       if (on) { ctx.strokeStyle = C.warm; ctx.lineWidth = 3; ctx.strokeRect(bx + 1.5, y + 1.5, cw - 3, 109); }
       drawBoat(bx + cw / 2, y + 40, 0, 0, b.id, 1.05);
       if (!owned) coin(bx + cw / 2 - 16, y + 92, 5);
       text(on ? 'IN USE' : owned ? 'USE' : String(b.cost), bx + cw / 2 + (owned ? 0 : 5), y + 92, 12, on ? C.warm : owned ? '#fff' : (save.coins >= b.cost ? C.warm : C.dim), 'center', '700');
       buttons.push({ x: bx, y, w: cw, h: 112, onTap: () => tapBoat(b) });
+      if (bpr) pressFx(bx, y + 2 * bpr, cw, 112, 0, bpr);
     });
     text(boatSkin(save.boat).name, W / 2, y + 130, 13, C.soft, 'center', '600');
     text('Earn coins from lanterns and points in every run.', W / 2, H - 28, 12, C.dim, 'center', '500');
@@ -1500,9 +1545,14 @@
       text(String(score()), W / 2, 46, 40);
       text(`Stage ${state.level}`, 14, 30, 14, C.warm, 'left', '700');
     }
-    coin(W - 60, 30, 6);
-    text(String(state.lanterns), W - 48, 31, 14, C.warm, 'left', '700');
-    if (save.jackets > 0) text(`Life jackets ${save.jackets}`, W - 14, 56, 12, C.soft, 'right', '600');
+    coin(W - 104, 30, 6);
+    text(String(state.lanterns), W - 92, 31, 14, C.warm, 'left', '700');
+    // pause button (handled in onDown, not in the buttons list, since play input is separate)
+    const pb = PAUSE_BTN;
+    plankShape(pb.x + pb.w / 2, pb.y + pb.h / 2, pb.w, pb.h, 0.03, 'wood', 7);
+    ctx.fillStyle = '#f1e3c2';
+    ctx.fillRect(pb.x + 15, pb.y + 12, 5, 16);
+    ctx.fillRect(pb.x + 25, pb.y + 12, 5, 16);
     if (state.banner) {
       const a = Math.min(1, state.banner.age * 4, (2.4 - state.banner.age) * 2);
       ctx.globalAlpha = Math.max(0, a);
@@ -1612,6 +1662,17 @@
     }
   }
 
+  function drawPaused() {
+    ctx.fillStyle = 'rgba(5,4,3,0.55)';
+    ctx.fillRect(0, 0, W, H);
+    panel(40, 150, W - 80, 290);
+    title('PAUSED', W / 2, 192, 28, C.title);
+    text(state.mode === 'level' ? `Level ${state.levelIdx + 1}: ${LEVELS[state.levelIdx].name}` : `Endless · score ${score()}`, W / 2, 226, 14, C.soft, 'center', '700');
+    button(66, 254, W - 132, 56, 'RESUME', resume, { primary: true, size: 22, title: true });
+    button(66, 322, W - 132, 46, 'RESTART', () => startGame(state.mode, state.levelIdx), { size: 17, rot: 0.012 });
+    button(66, 378, W - 132, 46, state.mode === 'level' ? 'QUIT TO LEVELS' : 'QUIT TO MENU', () => go(state.mode === 'level' ? 'levels' : 'menu'), { size: 17, rot: -0.012 });
+  }
+
   function drawWin() {
     const i = state.levelIdx;
     panel(30, 100, W - 60, 300);
@@ -1642,10 +1703,10 @@
     drawLand();
     drawRiver();
     drawScenery();
-    const showBoat = playing() || state.screen === 'over' || state.screen === 'win' || state.screen === 'menu';
+    const showBoat = playing() || ['over', 'win', 'menu', 'paused'].includes(state.screen);
     if (showBoat) drawBoat(state.boatX, BOAT_Y, playing() ? state.boatTilt : 0, playing() ? state.edge : 0);
     drawDarkness();
-    if (playing()) drawLanterns();
+    if (playing() || state.screen === 'paused') drawLanterns();
     drawFinishLights();
     drawHelicopter();
     if (playing() && state.edge > 0 && state.invuln <= 0) {
@@ -1654,7 +1715,7 @@
     }
     ctx.restore();
 
-    if (!playing() && state.screen !== 'over' && state.screen !== 'win') {
+    if (!playing() && !['over', 'win', 'paused'].includes(state.screen)) {
       ctx.fillStyle = 'rgba(2,4,12,0.35)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -1666,6 +1727,7 @@
       case 'play': drawPlayHUD(); break;
       case 'over': drawOver(); break;
       case 'win': drawWin(); break;
+      case 'paused': drawPaused(); break;
       case 'levels': drawLevels(); break;
     }
     if (state.toast) {
@@ -1686,5 +1748,6 @@
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  document.addEventListener('visibilitychange', () => { last = performance.now(); });
+  document.addEventListener('visibilitychange', () => { last = performance.now(); if (document.hidden) pause(); });
+  window.addEventListener('blur', pause);
 })();

@@ -6,6 +6,7 @@ Steer a boat down a river at night while a helicopter lights the way.
 - **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger. Spots you lit stay faintly visible for a moment, so scout ahead and remember the way.
 - **The river splits** around wooded islands. Often one side is blocked by rocks and a fallen log, so light it before you choose.
 - **Hit the bank, the island or the rocks and the run ends.**
+- **Pause** with the button in the top-right corner (Resume, Restart, Quit). The game also pauses if you leave the app.
 - **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.
 
 ### Two ways to play
@@ -17,7 +18,7 @@ Steer a boat down a river at night while a helicopter lights the way.
 ### Coins and shop
 
 - **Coins:** 1 per lantern in both modes, plus 1 per 50 points in Endless and a first-time bonus for each level.
-- **Shop:** spotlight, memory and boat-lamp upgrades (3 levels each), life jackets (each saves you from one crash, carry up to 3), and 5 boats.
+- **Shop:** spotlight, memory and boat-lamp upgrades (3 levels each), and 5 boats (looks only).
 - **High scores:** your top 10 Endless runs on this device, plus an "Everyone" leaderboard. That leaderboard works in the web version when signed in to Claude; in the Android app it's planned for Google Play Games.
 
 Progress (stars, coins, upgrades, boats, scores) is saved on the device.
