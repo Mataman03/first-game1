@@ -4,12 +4,15 @@
   'use strict';
 
   // Logical game size. The canvas is scaled to fit the screen.
+  // The game is 360 units wide. Its height follows the phone's shape (at least 640),
+  // so tall phones fill the screen instead of getting black bars.
   const W = 360;
-  const H = 640;
+  let H = 640;
 
   // Layout
-  const BOAT_Y = 400;        // the boat stays at this height; the river scrolls past it
-  const PAD_TOP = 500;       // below this line is the steering pad
+  let BOAT_Y = 400;          // the boat's height on screen (set in resize: 240 above the bottom)
+  let PAD_TOP = 500;         // below this line is the steering pad (set in resize: 140 above the bottom)
+  let SAFE_TOP = 0;          // room for the camera hole / status area at the top, in game units
   const HELI_OFFSET = 70;    // the helicopter flies this far above your finger
   const STEP = 8;            // world px between river points
 
@@ -176,15 +179,30 @@
   let scale = 1, dpr = 1;
   const hasTouch = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;
 
+  // How much of the top of the screen is taken by a camera hole or notch (CSS px).
+  // The browser reports it through env(); the Android app also sends it as window.__safeTopPx.
+  const safeProbe = document.createElement('div');
+  safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);pointer-events:none;visibility:hidden';
+  document.body.appendChild(safeProbe);
+  function updateSafeTop() {
+    const css = Math.max(safeProbe.offsetHeight || 0, Number(window.__safeTopPx) || 0);
+    SAFE_TOP = css / scale;
+  }
+
   function resize() {
     dpr = window.devicePixelRatio || 1;
-    scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    H = Math.round(Math.max(640, Math.min(900, W * vh / vw)));
+    BOAT_Y = H - 240;
+    PAD_TOP = H - 140;
+    scale = Math.min(vw / W, vh / H);
     canvas.style.width = Math.floor(W * scale) + 'px';
     canvas.style.height = Math.floor(H * scale) + 'px';
     canvas.width = dark.width = Math.floor(W * scale * dpr);
     canvas.height = dark.height = Math.floor(H * scale * dpr);
     ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
     dctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+    updateSafeTop();
   }
   window.addEventListener('resize', resize);
   resize();
@@ -476,10 +494,11 @@
     const p = toGame(e);
     try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
-    if (playing() && hit(p, PAUSE_BTN)) { pause(); return; }
+    if (playing() && hit({ x: p.x, y: p.y - SAFE_TOP }, PAUSE_BTN)) { pause(); return; }
     if (!playing()) {
       if ((state.screen === 'over' || state.screen === 'win') && state.time - state.overAt < 0.6) return;
       if (state.pendingTap) return;
+      p.y -= uiShift(); // buttons are drawn shifted down by this much
       for (const b of buttons) {
         if (!b.disabled && hit(p, b)) {
           state.press = { x: b.x, y: b.y, w: b.w, h: b.h, fn: b.onTap, id: e.pointerId, t: state.time, px: p.x, py: p.y, up: null };
@@ -519,6 +538,14 @@
     state.screen = 'play';
     last = performance.now();
   }
+  const CENTRED = ['how', 'scores', 'over', 'win', 'paused'];
+  function uiShift() {
+    if (playing()) return SAFE_TOP;
+    const extra = Math.max(0, H - SAFE_TOP - 640);
+    if (CENTRED.includes(state.screen)) return SAFE_TOP + extra / 2;
+    if (state.screen === 'menu') return SAFE_TOP + extra * 0.35;
+    return SAFE_TOP;
+  }
   const hit = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 
   function setKnob(p) {
@@ -534,7 +561,7 @@
     const p = toGame(e);
     const pr = state.press;
     if (pr && pr.up == null && e.pointerId === pr.id &&
-        !hit(p, { x: pr.x - 12, y: pr.y - 12, w: pr.w + 24, h: pr.h + 24 })) {
+        !hit({ x: p.x, y: p.y - uiShift() }, { x: pr.x - 12, y: pr.y - 12, w: pr.w + 24, h: pr.h + 24 })) {
       state.press = null; // slid off the button: cancel
     }
     if (e.pointerId === state.steerId) {
@@ -1392,11 +1419,11 @@
     // the post the signs are nailed to
     const px = 46;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(px + 4, 214, 18, 420);
+    ctx.fillRect(px + 4, 214, 18, H);
     const pg = ctx.createLinearGradient(px, 0, px + 18, 0);
     pg.addColorStop(0, '#4a3220'); pg.addColorStop(1, '#2c1d12');
     ctx.fillStyle = pg;
-    ctx.fillRect(px, 210, 18, 430);
+    ctx.fillRect(px, 210, 18, H);
 
     // lantern hanging from the post
     const lx = px + 9, ly = 226 + Math.sin(state.time * 1.3) * 1.5;
@@ -1440,13 +1467,14 @@
   // Levels: a map of the river with a numbered buoy for each level, start at the bottom
   const right0 = (x) => x < W / 2;
   function levelNode(i) {
-    return { x: W / 2 + Math.sin(i * 1.15 + 0.4) * 92, y: 590 - i * 51 };
+    const bottom = H - SAFE_TOP - 50, gap = Math.min(64, (bottom - 110) / 9);
+    return { x: W / 2 + Math.sin(i * 1.15 + 0.4) * 92, y: bottom - i * gap };
   }
 
   function drawLevels() {
     // dim the world and draw the map on top
     ctx.fillStyle = 'rgba(10,8,5,0.6)';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, -SAFE_TOP, W, H + SAFE_TOP);
     backButton();
     coinBadge(W - 16, 34);
     title('LEVELS', W / 2, 36, 26, C.title);
@@ -1594,7 +1622,7 @@
       if (bpr) pressFx(bx, y + 2 * bpr, cw, 112, 0, bpr);
     });
     text(boatSkin(save.boat).name, W / 2, y + 130, 13, C.soft, 'center', '600');
-    text('Earn coins from supply crates and points in every run.', W / 2, H - 28, 12, C.dim, 'center', '500');
+    text('Earn coins from supply crates and points in every run.', W / 2, H - SAFE_TOP - 28, 12, C.dim, 'center', '500');
   }
 
   function drawScores() {
@@ -1656,6 +1684,22 @@
     text(scoreStr, W - 36, y + 1, 18, '#fff', 'right', '800');
   }
 
+  function drawPad() {
+    if (hasTouch) {
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(0, PAD_TOP, W, H - PAD_TOP);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.setLineDash([6, 8]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, PAD_TOP); ctx.lineTo(W, PAD_TOP); ctx.stroke();
+      ctx.setLineDash([]);
+      drawJoystick();
+      if (state.playTime < 6 && !state.joy) {
+        text('touch above to fly the helicopter', W / 2, PAD_TOP - 18, 13, 'rgba(255,255,255,0.6)', 'center', '600');
+      }
+    }
+  }
+
   function drawPlayHUD() {
     if (state.mode === 'level') {
       // Progress bar to the dock
@@ -1687,20 +1731,7 @@
       wrapCenter(state.banner.sub, W / 2, 186, W - 60, 15, '#e6eef4');
       ctx.globalAlpha = 1;
     }
-    // Pad
-    if (hasTouch) {
-      ctx.fillStyle = 'rgba(0,0,0,0.22)';
-      ctx.fillRect(0, PAD_TOP, W, H - PAD_TOP);
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.setLineDash([6, 8]);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(0, PAD_TOP); ctx.lineTo(W, PAD_TOP); ctx.stroke();
-      ctx.setLineDash([]);
-      drawJoystick();
-      if (state.playTime < 6 && !state.joy) {
-        text('touch above to fly the helicopter', W / 2, PAD_TOP - 18, 13, 'rgba(255,255,255,0.6)', 'center', '600');
-      }
-    }
+    ctx.translate(0, -SAFE_TOP); // pop-ups float where the crate was, in world position
     for (const p of state.popups) {
       ctx.globalAlpha = 1 - p.age / 0.9;
       if (state.mode === 'level') { // in levels a crate is worth a coin
@@ -1796,7 +1827,7 @@
 
   function drawPaused() {
     ctx.fillStyle = 'rgba(5,4,3,0.55)';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, -H, W, H * 3);
     panel(40, 150, W - 80, 290);
     title('PAUSED', W / 2, 192, 28, C.title);
     text(state.mode === 'level' ? `Level ${state.levelIdx + 1}: ${LEVELS[state.levelIdx].name}` : `Endless · score ${score()}`, W / 2, 226, 14, C.soft, 'center', '700');
@@ -1853,6 +1884,10 @@
       ctx.fillStyle = 'rgba(2,4,12,0.35)';
       ctx.fillRect(0, 0, W, H);
     }
+    updateSafeTop();
+    ctx.save();
+    if (playing()) drawPad(); // the pad and joystick sit at the bottom, not shifted
+    ctx.translate(0, uiShift());
     switch (state.screen) {
       case 'menu': drawMenu(); break;
       case 'how': drawHow(); break;
@@ -1864,6 +1899,7 @@
       case 'paused': drawPaused(); break;
       case 'levels': drawLevels(); break;
     }
+    ctx.restore();
     if (state.toast) {
       ctx.globalAlpha = Math.min(1, (2 - state.toast.age) * 3);
       panel(40, H - 92, W - 80, 40);
