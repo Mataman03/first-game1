@@ -11,14 +11,14 @@ Steer a boat down a river at night while a helicopter lights the way. Every run 
 
 ### Two ways to play
 
-- **Levels:** 10 levels, each with its own river (the same layout every time, so you can learn it) and a dock at the end. Lanterns earn stars: finish for 1, collect half the lanterns for 2, all of them for 3. Finishing a level unlocks the next one.
+- **Levels:** 10 levels, each with its own river (the same layout every time, so you can learn it) and a dock at the end. Supply crates earn stars: finish for 1, pick up half the crates for 2, all of them for 3. Finishing a level unlocks the next one.
   Levels 1 and 2 have street lamps along a riverside road that light patches of the river, then stop, to teach you to use the chopper.
   1. First Light · 2. Gentle Bends · 3. The Split · 4. Blocked Way · 5. The Narrows · 6. Moonless Night · 7. Fast Water · 8. Island Maze · 9. Fading Memory · 10. Night Run
 - **Endless:** the river never ends. Every stage is darker and faster, with a narrower river. This mode has the high scores and leaderboard.
 
 ### Coins and shop
 
-- **Coins:** 1 per lantern in both modes, plus 1 per 50 points in Endless and a first-time bonus for each level.
+- **Coins:** 1 per crate in both modes, plus 1 per 50 points in Endless and a first-time bonus for each level.
 - **Shop:** spotlight, memory and boat-lamp upgrades (3 levels each), and 5 boats (looks only).
 - **High scores:** your top 10 Endless runs on this device, plus an "Everyone" leaderboard. That leaderboard works in the web version when signed in to Claude; in the Android app it's planned for Google Play Games.
 

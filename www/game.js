@@ -285,7 +285,7 @@
         for (const side of [-1, 1]) {
           if (rng() < 0.55) {
             const gap = 16 + rng() * 120;
-            if (world.road && side === world.road.side && w < world.road.until + 200 && gap < 64) continue;
+            if (world.road && side === world.road.side && w < world.road.until + 420 && gap < 104) continue;
             const x = river.x + side * (width / 2 + gap);
             if (x > -30 && x < W + 30) {
               const r = rng();
@@ -888,20 +888,31 @@
   function drawRoadAndHarbor() {
     const road = world.road;
     if (road) {
-      // asphalt strip along one bank, with a dashed centre line
-      const i0 = pointIndex(wBottom()), i1 = Math.min(pointIndex(wTop()), pointIndex(road.until + 260));
-      if (i1 > i0) {
-        const edge = (i, k) => { const q = river.pts[i]; return q.x + road.side * (q.width / 2 + k); };
-        ctx.fillStyle = '#3a3a3c';
+      // The road runs beside the river, then bends away into the forest after the last lamp.
+      const off = (w) => 22 + Math.max(0, w - road.until - 60) ** 1.35 * 0.35;
+      const edgeX = (w, k) => { const q = riverAt(w); return q.x + road.side * (q.width / 2 + off(w) + k); };
+      const lo = Math.max(0, wBottom()), hi = Math.min(wTop(), road.until + 420);
+      if (hi > lo) {
+        const stepW = 6;
+        ctx.fillStyle = '#5a5039'; // gravel verge
         ctx.beginPath();
-        for (let i = i0; i <= i1; i++) { const y = toScreenY(i * STEP); i === i0 ? ctx.moveTo(edge(i, 20), y) : ctx.lineTo(edge(i, 20), y); }
-        for (let i = i1; i >= i0; i--) ctx.lineTo(edge(i, 60), toScreenY(i * STEP));
+        for (let w = lo; w <= hi; w += stepW) { const y = toScreenY(w); w === lo ? ctx.moveTo(edgeX(w, -4), y) : ctx.lineTo(edgeX(w, -4), y); }
+        for (let w = hi; w >= lo; w -= stepW) ctx.lineTo(edgeX(w, 42), toScreenY(w));
         ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = 'rgba(240,220,150,0.55)'; ctx.lineWidth = 2;
-        ctx.setLineDash([10, 12]); ctx.lineDashOffset = state.distance;
+        ctx.fillStyle = '#3b3b3e'; // asphalt
         ctx.beginPath();
-        for (let i = i0; i <= i1; i++) { const y = toScreenY(i * STEP); i === i0 ? ctx.moveTo(edge(i, 40), y) : ctx.lineTo(edge(i, 40), y); }
-        ctx.stroke(); ctx.setLineDash([]);
+        for (let w = lo; w <= hi; w += stepW) { const y = toScreenY(w); w === lo ? ctx.moveTo(edgeX(w, 0), y) : ctx.lineTo(edgeX(w, 0), y); }
+        for (let w = hi; w >= lo; w -= stepW) ctx.lineTo(edgeX(w, 38), toScreenY(w));
+        ctx.closePath(); ctx.fill();
+        // centre dashes, each one pinned to a spot on the road so they scroll with the world
+        ctx.strokeStyle = 'rgba(240,220,150,0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let w = Math.ceil(lo / 24) * 24; w <= hi; w += 24) {
+          ctx.moveTo(edgeX(w, 19), toScreenY(w));
+          ctx.lineTo(edgeX(w + 11, 19), toScreenY(w + 11));
+        }
+        ctx.stroke();
       }
     }
     // harbour piers sticking out from both banks
@@ -1101,21 +1112,34 @@
     }
   }
 
+  // Supply crates bobbing on the water. They don't glow: you only see them where there is light.
   function drawLanterns() {
     for (const ln of state.lanternsList) {
-      const x = riverAt(ln.w).x + ln.dx + Math.sin(state.time * 1.5 + ln.phase) * 3;
-      const y = toScreenY(ln.w);
-      const k = 0.75 + 0.25 * Math.sin(state.time * 5 + ln.phase);
-      const g = ctx.createRadialGradient(x, y, 0, x, y, 18);
-      g.addColorStop(0, `rgba(255,214,120,${0.9 * k})`);
-      g.addColorStop(0.35, `rgba(255,170,70,${0.45 * k})`);
-      g.addColorStop(1, 'rgba(255,150,60,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffe7a3';
-      ctx.fillRect(x - 2.5, y - 3.5, 5, 7);
+      const x = riverAt(ln.w).x + ln.dx + Math.sin(state.time * 1.5 + ln.phase) * 2;
+      const y = toScreenY(ln.w) + Math.sin(state.time * 2.2 + ln.phase) * 1.2;
+      const rot = Math.sin(state.time * 1.1 + ln.phase) * 0.25 + ln.phase;
+      // ripple ring
+      ctx.strokeStyle = 'rgba(200,230,245,0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.ellipse(x, y + 2, 13, 9, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(-6, -4, 14, 12);
+      ctx.fillStyle = '#9a6a3a';
+      ctx.fillRect(-7, -7, 14, 14);
+      ctx.strokeStyle = '#5e3d1f';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-7, -7, 14, 14);
+      ctx.beginPath(); ctx.moveTo(-7, -2.3); ctx.lineTo(7, -2.3); ctx.moveTo(-7, 2.3); ctx.lineTo(7, 2.3); ctx.stroke();
+      ctx.strokeStyle = '#d9b26b';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(-7, -7); ctx.lineTo(7, 7); ctx.stroke(); // rope
+      ctx.restore();
     }
   }
+
 
   // ---------- Draw: UI ----------
   const C = { title: '#efe2bf', warm: '#ffc95c', soft: '#c3b394', dim: '#8a7c63', bad: '#ff8e66', good: '#b6e38a' };
@@ -1480,9 +1504,10 @@
       ['Steer the boat', 'Put your thumb on the bottom pad: a joystick appears. Left and right steer, push up to go faster. Let go and the boat goes straight.'],
       ['Fly the helicopter', 'Touch anywhere above the pad with another finger. Its spotlight shows the river.'],
       ['Remember the river', 'Lit spots stay visible for a moment, so scout ahead, then steer.'],
+      ['Supply crates', 'They float in the dark. Light them up to find them, then steer into them: +10 points and 1 coin each.'],
       ['The river splits', 'Pick a side. Rocks or a fallen log can block one way, so light it first.'],
-      ['Levels', 'Reach the dock to finish. Lanterns give stars: half of them for 2 stars, all for 3.'],
-      ['Endless', 'It gets darker and faster until you crash. Coins: 1 per lantern and 1 per 50 points.'],
+      ['Levels', 'Reach the dock to finish. Floating supply crates give stars: half of them for 2 stars, all for 3.'],
+      ['Endless', 'It gets darker and faster until you crash. Coins: 1 per crate and 1 per 50 points.'],
     ];
     let y = 142;
     for (const [head, body] of rows) {
@@ -1546,7 +1571,7 @@
       if (bpr) pressFx(bx, y + 2 * bpr, cw, 112, 0, bpr);
     });
     text(boatSkin(save.boat).name, W / 2, y + 130, 13, C.soft, 'center', '600');
-    text('Earn coins from lanterns and points in every run.', W / 2, H - 28, 12, C.dim, 'center', '500');
+    text('Earn coins from supply crates and points in every run.', W / 2, H - 28, 12, C.dim, 'center', '500');
   }
 
   function drawScores() {
@@ -1587,7 +1612,7 @@
         });
       }
     }
-    text(`Endless runs ${save.runs}  ·  Lanterns ${save.lanternsTotal}  ·  Stars ${totalStars()}`, W / 2, 560, 12, C.soft, 'center', '600');
+    text(`Endless runs ${save.runs}  ·  Crates ${save.lanternsTotal}  ·  Stars ${totalStars()}`, W / 2, 560, 12, C.soft, 'center', '600');
     button(70, 580, W - 140, 46, 'PLAY ENDLESS', () => startGame('endless'), { primary: true, size: 18 });
   }
 
@@ -1655,7 +1680,7 @@
     }
     for (const p of state.popups) {
       ctx.globalAlpha = 1 - p.age / 0.9;
-      text(`+${LANTERN_BONUS}`, p.x, p.y, 20, C.warm);
+      text(`+${LANTERN_BONUS}`, p.x, p.y, 20, C.warm); // crate picked up
       ctx.globalAlpha = 1;
     }
   }
@@ -1732,7 +1757,7 @@
     if (state.newBest) text('New high score!', W / 2, 290, 18, C.good, 'center', '700');
     coin(W / 2 - 52, 330);
     text(`+${state.coinsEarned} coins`, W / 2 - 38, 331, 17, C.warm, 'left', '700');
-    text(`${state.lanterns} lanterns · ${Math.floor(score() / 50)} from points`, W / 2, 360, 12, C.soft, 'center', '500');
+    text(`${state.lanterns} crates · ${Math.floor(score() / 50)} from points`, W / 2, 360, 12, C.soft, 'center', '500');
     text(`You have ${save.coins} coins`, W / 2, 386, 13, C.soft, 'center', '600');
     if (state.time - state.overAt > 0.6) {
       button(50, 432, W - 100, 56, 'PLAY AGAIN', () => startGame('endless'), { primary: true, size: 20 });
@@ -1759,11 +1784,11 @@
     text(`${i + 1}. ${LEVELS[i].name}`, W / 2, 174, 15, C.soft, 'center', '600');
     const shown = Math.min(state.levelStars, Math.floor((state.time - state.overAt) / 0.3) + 1);
     for (let k = 0; k < 3; k++) star(W / 2 - 52 + k * 52, 226, k === 1 ? 24 : 20, k < shown);
-    text(`Lanterns ${state.lanterns} / ${state.lanternTotal}`, W / 2, 274, 15, '#fff', 'center', '700');
+    text(`Crates ${state.lanterns} / ${state.lanternTotal}`, W / 2, 274, 15, '#fff', 'center', '700');
     coin(W / 2 - 52, 310);
     text(`+${state.coinsEarned} coins`, W / 2 - 38, 311, 17, C.warm, 'left', '700');
     if (state.firstClear) text(`includes first-time bonus +${10 + 5 * (i + 1)}`, W / 2, 338, 12, C.soft, 'center', '500');
-    if (state.levelStars < 3) text('Get every lantern for 3 stars', W / 2, 368, 12, C.dim, 'center', '500');
+    if (state.levelStars < 3) text('Pick up every crate for 3 stars', W / 2, 368, 12, C.dim, 'center', '500');
     if (state.time - state.overAt > 0.6) {
       if (i + 1 < LEVELS.length) {
         button(50, 420, W - 100, 56, 'NEXT LEVEL', () => startGame('level', i + 1), { primary: true, size: 20 });
@@ -1784,8 +1809,8 @@
     drawScenery();
     const showBoat = playing() || ['over', 'win', 'menu', 'paused'].includes(state.screen);
     if (showBoat) drawBoat(state.boatX, BOAT_Y, playing() ? state.boatTilt : 0, playing() ? state.edge : 0);
-    drawDarkness();
     if (playing() || state.screen === 'paused') drawLanterns();
+    drawDarkness();
     drawFinishLights();
     drawWorldLights();
     drawHelicopter();
