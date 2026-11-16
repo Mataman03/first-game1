@@ -1,11 +1,14 @@
 # Night Watch
 
-Your finger is a flashlight in the dark. Hold it on the start circle, then keep it on the glowing path as it winds toward you.
+A two-finger game in the dark.
 
-- **Lift your finger** and the run ends.
-- **Leave the path** and you're lost in the dark. The screen turns red and the phone buzzes as you get close to the edge.
-- **Catch fireflies** on the path for +10 bonus points.
-- The path gets **faster, narrower and twistier** the longer you survive, and shadows creep in from the edges.
+- **Finger 1 walks the soldier.** Hold the start circle, then drag; the soldier walks just above your finger. **Lift this finger and the run ends.**
+- **Finger 2 is your flashlight.** Wherever you hold it, the path lights up. Lit parts stay visible for a moment after the light moves on, so light the way ahead, remember it, and walk.
+- **Keep the soldier on the path.** Step off it and you're lost in the dark. The screen turns red and the phone buzzes as you get close to the edge.
+- **Catch fireflies** with the soldier for +10 bonus points.
+- The path gets **faster, narrower and twistier** the longer you survive.
+
+On a computer (one mouse), the flashlight follows a little ahead of the soldier.
 
 Score = distance travelled + firefly bonuses. Your best score is saved on the device.
 
@@ -19,7 +22,7 @@ Open `www/index.html` in a browser, or run:
 npm run serve
 ```
 
-Then go to http://localhost:8080. On a computer, hold the mouse button down and drag.
+Then go to http://localhost:8080. On a computer, hold the mouse button on the start circle and drag.
 
 ## How the Android build works
 
