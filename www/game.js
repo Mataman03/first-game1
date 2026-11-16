@@ -1,5 +1,5 @@
-// Night Watch — a soldier walks a dirt road through a forest at night.
-// Thumb at the bottom steers him. Another finger is the flashlight that shows the road.
+// Night Watch — steer a boat down a dark river. A helicopter's spotlight shows the way.
+// Thumb on the bottom pad steers the boat. Another finger flies the helicopter.
 (() => {
   'use strict';
 
@@ -8,31 +8,32 @@
   const H = 640;
 
   // Layout
-  const SOLDIER_Y = 400;     // the soldier stays at this height; the world scrolls past him
+  const BOAT_Y = 400;        // the boat stays at this height; the river scrolls past it
   const PAD_TOP = 500;       // below this line is the steering pad
-  const STEP = 8;            // world px between road points
+  const HELI_OFFSET = 70;    // the helicopter flies this far above your finger, so you can see what it lights
+  const STEP = 8;            // world px between river points
 
-  // Difficulty per level (level 1 → 10+)
+  // Difficulty per level
   const LEVEL_LENGTH = 1400; // world px per level
   function levelParams(level) {
     const n = Math.min(level, 10) - 1;
     return {
-      speed: 95 + n * 20,                 // px/s
-      lightR: Math.max(62, 112 - n * 6),  // flashlight radius
-      memory: Math.max(0.45, 1.8 - n * 0.16), // seconds lit road stays visible
+      speed: 95 + n * 20,                        // px/s
+      lightR: Math.max(60, 105 - n * 5),         // spotlight radius
+      memory: Math.max(0.45, 1.8 - n * 0.16),    // seconds a lit spot stays visible
       ambient: Math.min(0.985, 0.9 + n * 0.012), // how dark the night is
     };
   }
-  const START_WIDTH = 150;
-  const MIN_WIDTH = 54;
-  const NARROW_RATE = 0.0085; // road width lost per px travelled
+  const START_WIDTH = 160;
+  const MIN_WIDTH = 60;
+  const NARROW_RATE = 0.0085; // river width lost per px travelled
   const STEER_GAIN = 1.25;
-  const FIREFLY_EVERY = 360;
-  const FIREFLY_BONUS = 10;
+  const LANTERN_EVERY = 360;
+  const LANTERN_BONUS = 10;
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const dark = document.createElement('canvas'); // darkness layer with holes cut for lights
+  const dark = document.createElement('canvas'); // darkness layer with holes cut for light
   const dctx = dark.getContext('2d');
   let scale = 1, dpr = 1;
 
@@ -53,11 +54,11 @@
 
   // ---------- Storage (safe) ----------
   function loadBest() {
-    try { return parseInt(localStorage.getItem('nightwatch.best3') || '0', 10) || 0; }
+    try { return parseInt(localStorage.getItem('nightwatch.river.best') || '0', 10) || 0; }
     catch { return 0; }
   }
   function saveBest(v) {
-    try { localStorage.setItem('nightwatch.best3', String(v)); } catch { /* ignore */ }
+    try { localStorage.setItem('nightwatch.river.best', String(v)); } catch { /* ignore */ }
   }
 
   // ---------- Sound (tiny synth, no files) ----------
@@ -82,86 +83,86 @@
   const sfx = {
     start: () => { beep(440, 0.12, 'triangle', 0.06); setTimeout(() => beep(660, 0.15, 'triangle', 0.06), 90); },
     click: () => beep(1400, 0.03, 'square', 0.03),
-    firefly: () => { beep(1046, 0.07, 'sine', 0.06); setTimeout(() => beep(1568, 0.12, 'sine', 0.05), 60); },
+    lantern: () => { beep(1046, 0.07, 'sine', 0.06); setTimeout(() => beep(1568, 0.12, 'sine', 0.05), 60); },
     level: () => { beep(392, 0.15, 'triangle', 0.06); setTimeout(() => beep(311, 0.3, 'triangle', 0.06), 150); },
-    over: () => beep(330, 0.6, 'sawtooth', 0.07, 60),
+    over: () => beep(160, 0.6, 'sawtooth', 0.08, 40),
     warn: () => beep(180, 0.05, 'square', 0.03),
   };
   function vibrate(ms) {
     try { if (navigator.vibrate) navigator.vibrate(ms); } catch { /* ignore */ }
   }
 
-  // ---------- World: road + scenery ----------
-  // World coordinate w grows upward. A point at w is drawn at screen y = SOLDIER_Y - (w - distance).
-  const road = { pts: [], targetX: W / 2, x: W / 2 };
-  let scenery = [];   // trees, bushes, rocks beside the road
-  let pebbles = [];   // small stones on the road
+  // ---------- World: river + banks ----------
+  // World coordinate w grows upward. A point at w is drawn at screen y = BOAT_Y - (w - distance).
+  const river = { pts: [], targetX: W / 2, x: W / 2 };
+  let scenery = [];  // trees, bushes, rocks on the banks
+  let ripples = [];  // little wave marks on the water
+  let reeds = [];    // reeds along the bank edges
 
   function resetWorld() {
-    road.pts = [];
-    road.x = road.targetX = W / 2;
+    river.pts = [];
+    river.x = river.targetX = W / 2;
     scenery = [];
-    pebbles = [];
+    ripples = [];
+    reeds = [];
   }
 
-  function extendRoad(toW) {
-    while (road.pts.length * STEP < toW) {
-      const w = road.pts.length * STEP;
+  function extendRiver(toW) {
+    while (river.pts.length * STEP < toW) {
+      const w = river.pts.length * STEP;
       const width = Math.max(MIN_WIDTH, START_WIDTH - w * NARROW_RATE);
       const margin = width / 2 + 20;
       if (w < 300) {
-        road.x = road.targetX = W / 2; // straight start
+        river.x = river.targetX = W / 2; // straight start
       } else {
-        if (Math.abs(road.targetX - road.x) < 4) {
-          road.targetX = margin + Math.random() * (W - margin * 2);
+        if (Math.abs(river.targetX - river.x) < 4) {
+          river.targetX = margin + Math.random() * (W - margin * 2);
         }
         const maxSlope = Math.min(5, 1.5 + w / 3000);
-        const dx = Math.max(-maxSlope, Math.min(maxSlope, (road.targetX - road.x) * 0.055));
-        road.x = Math.max(margin, Math.min(W - margin, road.x + dx));
+        const dx = Math.max(-maxSlope, Math.min(maxSlope, (river.targetX - river.x) * 0.055));
+        river.x = Math.max(margin, Math.min(W - margin, river.x + dx));
       }
-      road.pts.push({ x: road.x, width, seen: -99 });
+      river.pts.push({ x: river.x, width });
 
-      // Scenery on both sides
-      if (road.pts.length % 3 === 0) {
+      if (river.pts.length % 3 === 0) {
         for (const side of [-1, 1]) {
           if (Math.random() < 0.55) {
-            const edge = road.x + side * (width / 2);
-            const gap = 14 + Math.random() * 120;
-            const x = edge + side * gap;
+            const x = river.x + side * (width / 2 + 16 + Math.random() * 120);
             if (x > -30 && x < W + 30) {
               const r = Math.random();
               scenery.push({
                 w, x,
-                kind: r < 0.5 ? 'tree' : r < 0.8 ? 'bush' : 'rock',
-                size: r < 0.5 ? 20 + Math.random() * 16 : 8 + Math.random() * 8,
+                kind: r < 0.55 ? 'tree' : r < 0.85 ? 'bush' : 'rock',
+                size: r < 0.55 ? 18 + Math.random() * 16 : 7 + Math.random() * 8,
                 hue: 95 + Math.random() * 40,
                 seed: Math.random() * 10,
               });
             }
           }
+          if (Math.random() < 0.5) reeds.push({ w, side, seed: Math.random() * 10 });
         }
       }
-      if (Math.random() < 0.35) {
-        pebbles.push({ w, dx: (Math.random() - 0.5) * width * 0.8, r: 1 + Math.random() * 1.8 });
+      if (Math.random() < 0.3) {
+        ripples.push({ w, dx: (Math.random() - 0.5) * 0.8, len: 6 + Math.random() * 10, phase: Math.random() * 6 });
       }
     }
   }
 
-  function roadAt(w) {
+  function riverAt(w) {
     if (w < 0) return { x: W / 2, width: START_WIDTH };
-    extendRoad(w + STEP * 2);
+    extendRiver(w + STEP * 2);
     const i = Math.floor(w / STEP);
     const t = (w - i * STEP) / STEP;
-    const a = road.pts[i], b = road.pts[i + 1];
+    const a = river.pts[i], b = river.pts[i + 1];
     return { x: a.x + (b.x - a.x) * t, width: a.width + (b.width - a.width) * t };
   }
   function pointIndex(w) {
-    extendRoad(Math.max(0, w) + STEP * 2);
+    extendRiver(Math.max(0, w) + STEP * 2);
     return Math.max(0, Math.round(w / STEP));
   }
 
-  const toScreenY = (w) => SOLDIER_Y - (w - state.distance);
-  const toWorld = (y) => state.distance + (SOLDIER_Y - y);
+  const toScreenY = (w) => BOAT_Y - (w - state.distance);
+  const toWorld = (y) => state.distance + (BOAT_Y - y);
 
   // ---------- Game state ----------
   const state = {
@@ -173,23 +174,26 @@
     bonus: 0,
     best: loadBest(),
     newBest: false,
-    soldierX: W / 2,
-    step: 0,
+    boatX: W / 2,
+    boatTilt: 0,
     steerId: null, steerLastX: 0,
-    lightId: null, light: null,
-    fireflies: [],
-    nextFireflyW: FIREFLY_EVERY,
+    lightId: null, finger: null,
+    heli: { x: W / 2 + 60, y: 120 }, // helicopter position (it follows your finger smoothly)
+    marks: [],    // spots the spotlight has lit: { x, w, r, t }
+    foam: [],     // wake behind the boat
+    lanterns: [],
+    nextLanternW: LANTERN_EVERY,
     popups: [],
     edge: 0,
     warnTimer: 0,
-    banner: null, // { text, sub, age }
+    banner: null,
     reason: '',
     time: 0,
     overAt: 0,
     shake: 0,
     playTime: 0,
   };
-  window.__nightWatch = { state, roadAt }; // handy for debugging in the browser console
+  window.__nightWatch = { state, riverAt }; // handy for debugging in the browser console
 
   function score() {
     return Math.floor(state.distance / 10) + state.bonus;
@@ -197,11 +201,12 @@
 
   function startGame() {
     resetWorld();
+    const p = levelParams(1);
     Object.assign(state, {
-      mode: 'play', distance: 0, level: 1, params: levelParams(1), speed: levelParams(1).speed,
-      bonus: 0, newBest: false, soldierX: W / 2, fireflies: [], nextFireflyW: FIREFLY_EVERY,
-      popups: [], edge: 0, reason: '', playTime: 0,
-      banner: { text: 'Level 1', sub: 'Light the road ahead', age: 0 },
+      mode: 'play', distance: 0, level: 1, params: p, speed: p.speed,
+      bonus: 0, newBest: false, boatX: W / 2, boatTilt: 0, marks: [], foam: [],
+      lanterns: [], nextLanternW: LANTERN_EVERY, popups: [], edge: 0, reason: '', playTime: 0,
+      banner: { text: 'Level 1', sub: 'Light the river ahead', age: 0 },
     });
     sfx.start();
     vibrate(30);
@@ -212,9 +217,9 @@
     state.mode = 'over';
     state.reason = reason;
     state.overAt = state.time;
-    state.shake = 10;
+    state.shake = 12;
     sfx.over();
-    vibrate([80, 60, 120]);
+    vibrate([100, 60, 140]);
     const s = score();
     if (s > state.best) {
       state.best = s;
@@ -238,14 +243,13 @@
       startGame();
     }
 
-    // Mouse on a computer: one pointer does the steering anywhere
     const isSteer = !hasTouch || e.pointerType === 'mouse' || p.y >= PAD_TOP;
     if (isSteer && state.steerId === null) {
       state.steerId = e.pointerId;
       state.steerLastX = p.x;
     } else if (!isSteer && state.lightId === null) {
       state.lightId = e.pointerId;
-      state.light = p;
+      state.finger = p;
       sfx.click();
     }
   }
@@ -254,59 +258,55 @@
     const p = toGame(e);
     if (e.pointerId === state.steerId) {
       if (state.mode === 'play') {
-        state.soldierX += (p.x - state.steerLastX) * STEER_GAIN;
-        state.soldierX = Math.max(8, Math.min(W - 8, state.soldierX));
+        const dx = (p.x - state.steerLastX) * STEER_GAIN;
+        state.boatX = Math.max(8, Math.min(W - 8, state.boatX + dx));
+        state.boatTilt = Math.max(-0.5, Math.min(0.5, state.boatTilt + dx * 0.02));
       }
       state.steerLastX = p.x;
     } else if (e.pointerId === state.lightId) {
-      state.light = p;
+      state.finger = p;
     }
   }
 
   function onUp(e) {
-    if (e.pointerId === state.steerId) state.steerId = null; // the soldier just keeps walking straight
-    if (e.pointerId === state.lightId) { state.lightId = null; state.light = null; }
+    if (e.pointerId === state.steerId) state.steerId = null; // the boat keeps going straight
+    if (e.pointerId === state.lightId) { state.lightId = null; state.finger = null; }
   }
 
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointercancel', onUp);
+  const keys = {};
   window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
     if (e.code === 'Space' && !e.repeat && state.mode !== 'play') startGame();
   });
-  const keys = {};
-  window.addEventListener('keydown', (e) => { keys[e.code] = true; });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-  // Where the flashlight points right now (null = no light)
-  function lightPos() {
-    if (state.light) return state.light;
-    if (!hasTouch && state.mode === 'play') return { x: state.soldierX, y: SOLDIER_Y - 130 };
+  // Where the spotlight is aimed right now (null = no light)
+  function spotTarget() {
+    if (state.finger) return { x: state.finger.x, y: Math.max(20, state.finger.y - HELI_OFFSET) };
+    if (!hasTouch && state.mode === 'play') return { x: state.boatX, y: BOAT_Y - 140 };
     return null;
   }
 
   // ---------- Update ----------
-  function lightUp(cx, cy, r) {
-    const i0 = pointIndex(Math.max(0, toWorld(cy + r))), i1 = pointIndex(toWorld(cy - r));
-    for (let i = i0; i <= i1; i++) {
-      const p = road.pts[i];
-      if (!p) continue;
-      const dy = toScreenY(i * STEP) - cy;
-      if (Math.abs(dy) > r) continue;
-      const reach = Math.sqrt(r * r - dy * dy);
-      if (cx + reach >= p.x - p.width / 2 && cx - reach <= p.x + p.width / 2) p.seen = state.time;
-    }
-  }
-
   function update(dt) {
     state.time += dt;
     if (state.banner) { state.banner.age += dt; if (state.banner.age > 2.4) state.banner = null; }
 
+    // The helicopter glides toward where you point
+    const target = spotTarget();
+    if (target) {
+      const k = Math.min(1, dt * 14);
+      state.heli.x += (target.x - state.heli.x) * k;
+      state.heli.y += (target.y - state.heli.y) * k;
+    }
+
     if (state.mode === 'play') {
       state.playTime += dt;
 
-      // Levels
       const lvl = 1 + Math.floor(state.distance / LEVEL_LENGTH);
       if (lvl !== state.level) {
         state.level = lvl;
@@ -315,63 +315,76 @@
         sfx.level();
         vibrate(40);
       }
-      // Ease toward the level's speed so it never jumps
       state.speed += (state.params.speed - state.speed) * Math.min(1, dt * 0.8);
       state.distance += state.speed * dt;
-      state.step += state.speed * dt * 0.09;
 
-      // Keyboard steering on a computer
-      if (keys.ArrowLeft || keys.KeyA) state.soldierX -= 200 * dt;
-      if (keys.ArrowRight || keys.KeyD) state.soldierX += 200 * dt;
-      state.soldierX = Math.max(8, Math.min(W - 8, state.soldierX));
+      if (keys.ArrowLeft || keys.KeyA) { state.boatX -= 200 * dt; state.boatTilt -= 2 * dt; }
+      if (keys.ArrowRight || keys.KeyD) { state.boatX += 200 * dt; state.boatTilt += 2 * dt; }
+      state.boatX = Math.max(8, Math.min(W - 8, state.boatX));
+      state.boatTilt *= Math.pow(0.02, dt); // straighten out
+      state.boatTilt = Math.max(-0.5, Math.min(0.5, state.boatTilt));
 
-      // On the road?
-      const p = roadAt(state.distance);
+      // In the water?
+      const p = riverAt(state.distance);
       const half = p.width / 2;
-      const off = Math.abs(state.soldierX - p.x);
+      const off = Math.abs(state.boatX - p.x);
       state.edge = Math.max(0, Math.min(1, (off - half * 0.55) / (half * 0.45)));
-      if (off > half - 4) {
-        gameOver('Off the road!');
+      if (off > half - 6) {
+        gameOver('Crashed into the bank!');
       } else if (state.edge > 0.5) {
         state.warnTimer -= dt;
         if (state.warnTimer <= 0) { sfx.warn(); vibrate(15); state.warnTimer = 0.2; }
       }
 
-      // Fireflies
-      const aheadW = state.distance + SOLDIER_Y + 40;
-      while (state.nextFireflyW < aheadW) {
-        const fp = roadAt(state.nextFireflyW);
-        state.fireflies.push({ w: state.nextFireflyW, offset: (Math.random() - 0.5) * fp.width * 0.5, phase: Math.random() * 6, alive: true });
-        state.nextFireflyW += FIREFLY_EVERY * (0.7 + Math.random() * 0.6);
+      // Remember where the spotlight shone (in world coordinates, so it moves with the river)
+      if (target) {
+        const lastMark = state.marks[state.marks.length - 1];
+        const mw = toWorld(state.heli.y);
+        if (!lastMark || state.time - lastMark.t > 0.04 ||
+            Math.hypot(lastMark.x - state.heli.x, lastMark.w - mw) > 10) {
+          state.marks.push({ x: state.heli.x, w: mw, r: state.params.lightR, t: state.time });
+        }
       }
-      for (const fl of state.fireflies) {
-        if (!fl.alive) continue;
-        const fx = roadAt(fl.w).x + fl.offset, fy = toScreenY(fl.w);
-        if (Math.hypot(fx - state.soldierX, fy - SOLDIER_Y) < 26) {
-          fl.alive = false;
-          state.bonus += FIREFLY_BONUS;
-          state.popups.push({ x: fx, y: fy, age: 0 });
-          sfx.firefly();
+      state.marks = state.marks.filter((m) => state.time - m.t < state.params.memory);
+
+      // Wake foam
+      if (Math.random() < dt * 40) {
+        state.foam.push({ x: state.boatX + (Math.random() - 0.5) * 8, w: state.distance - 16, age: 0, life: 0.9 + Math.random() * 0.5, side: Math.random() < 0.5 ? -1 : 1 });
+      }
+
+      // Lanterns
+      const aheadW = state.distance + BOAT_Y + 40;
+      while (state.nextLanternW < aheadW) {
+        const fp = riverAt(state.nextLanternW);
+        state.lanterns.push({ w: state.nextLanternW, offset: (Math.random() - 0.5) * fp.width * 0.5, phase: Math.random() * 6, alive: true });
+        state.nextLanternW += LANTERN_EVERY * (0.7 + Math.random() * 0.6);
+      }
+      for (const ln of state.lanterns) {
+        if (!ln.alive) continue;
+        const lx = riverAt(ln.w).x + ln.offset, ly = toScreenY(ln.w);
+        if (Math.hypot(lx - state.boatX, ly - BOAT_Y) < 26) {
+          ln.alive = false;
+          state.bonus += LANTERN_BONUS;
+          state.popups.push({ x: lx, y: ly, age: 0 });
+          sfx.lantern();
           vibrate(20);
         }
       }
-      state.fireflies = state.fireflies.filter((fl) => fl.alive && toScreenY(fl.w) < H + 30);
-
-      const L = lightPos();
-      if (L) lightUp(L.x, L.y, state.params.lightR);
-      lightUp(state.soldierX, SOLDIER_Y, 34);
+      state.lanterns = state.lanterns.filter((ln) => ln.alive && toScreenY(ln.w) < H + 30);
     } else if (state.mode === 'menu') {
       state.distance += 30 * dt; // gentle drift on the title screen
-      state.step += 30 * dt * 0.09;
-      for (const pt of road.pts) pt.seen = state.time;
-    } else if (state.mode === 'over') {
-      for (const pt of road.pts) pt.seen = state.time; // show the whole road after losing
     }
 
-    // Drop things that scrolled off the bottom
-    const minW = state.distance - (H - SOLDIER_Y) - 60;
+    for (const f of state.foam) {
+      f.age += dt;
+      f.x += f.side * 22 * dt; // spreads into a V
+    }
+    state.foam = state.foam.filter((f) => f.age < f.life);
+
+    const minW = state.distance - (H - BOAT_Y) - 60;
     if (scenery.length > 400) scenery = scenery.filter((s) => s.w > minW);
-    if (pebbles.length > 400) pebbles = pebbles.filter((s) => s.w > minW);
+    if (ripples.length > 400) ripples = ripples.filter((s) => s.w > minW);
+    if (reeds.length > 400) reeds = reeds.filter((s) => s.w > minW);
 
     for (const p of state.popups) { p.age += dt; p.y -= 40 * dt; }
     state.popups = state.popups.filter((p) => p.age < 0.9);
@@ -382,55 +395,84 @@
   const wTop = () => toWorld(-40);
   const wBottom = () => Math.max(0, toWorld(H + 40));
 
-  function drawGround() {
-    ctx.fillStyle = '#1d2b1a';
+  function riverOutline(extra) {
+    const i0 = pointIndex(wBottom()), i1 = pointIndex(wTop());
+    const path = new Path2D();
+    for (let i = i0; i <= i1; i++) {
+      const p = river.pts[i]; if (!p) continue;
+      const y = toScreenY(i * STEP);
+      if (i === i0) path.moveTo(p.x - p.width / 2 - extra, y); else path.lineTo(p.x - p.width / 2 - extra, y);
+    }
+    for (let i = i1; i >= i0; i--) {
+      const p = river.pts[i]; if (!p) continue;
+      path.lineTo(p.x + p.width / 2 + extra, toScreenY(i * STEP));
+    }
+    path.closePath();
+    return path;
+  }
+
+  function drawLand() {
+    ctx.fillStyle = '#1e2d1b';
     ctx.fillRect(0, 0, W, H);
-    // Grass stripes that scroll with the world
-    const band = 26;
+    // Subtle grass texture that scrolls with the world
+    const band = 30;
     const offset = state.distance % (band * 2);
-    ctx.fillStyle = '#213020';
+    ctx.fillStyle = '#223320';
     for (let y = -band * 2 + offset; y < H; y += band * 2) ctx.fillRect(0, y, W, band);
   }
 
-  function drawRoad() {
-    const i0 = pointIndex(wBottom()), i1 = pointIndex(wTop());
-    // Shoulder (darker edge), then the dirt
-    for (const [extra, color] of [[10, '#3b3324'], [0, '#8b7550']]) {
-      ctx.fillStyle = color;
+  function drawRiver() {
+    // Muddy bank, then water
+    ctx.fillStyle = '#5a5039';
+    ctx.fill(riverOutline(9));
+    const water = riverOutline(0);
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, '#1d4c66');
+    g.addColorStop(0.5, '#2a6585');
+    g.addColorStop(1, '#1d4c66');
+    ctx.fillStyle = g;
+    ctx.fill(water);
+
+    // Ripples drift with the current
+    ctx.save();
+    ctx.clip(water);
+    ctx.strokeStyle = 'rgba(190,225,240,0.35)';
+    ctx.lineWidth = 1.5;
+    const lo = wBottom(), hi = wTop();
+    for (const r of ripples) {
+      if (r.w < lo || r.w > hi) continue;
+      const p = riverAt(r.w);
+      const x = p.x + r.dx * p.width + Math.sin(state.time * 1.5 + r.phase) * 3;
+      const y = toScreenY(r.w);
       ctx.beginPath();
-      for (let i = i0; i <= i1; i++) {
-        const p = road.pts[i]; if (!p) continue;
-        const y = toScreenY(i * STEP);
-        if (i === i0) ctx.moveTo(p.x - p.width / 2 - extra, y); else ctx.lineTo(p.x - p.width / 2 - extra, y);
-      }
-      for (let i = i1; i >= i0; i--) {
-        const p = road.pts[i]; if (!p) continue;
-        ctx.lineTo(p.x + p.width / 2 + extra, toScreenY(i * STEP));
-      }
-      ctx.closePath();
-      ctx.fill();
-    }
-    // Wheel ruts
-    ctx.strokeStyle = 'rgba(70,56,36,0.55)';
-    ctx.lineWidth = 5;
-    for (const k of [-0.25, 0.25]) {
-      ctx.beginPath();
-      for (let i = i0; i <= i1; i++) {
-        const p = road.pts[i]; if (!p) continue;
-        const x = p.x + k * p.width, y = toScreenY(i * STEP);
-        if (i === i0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
+      ctx.moveTo(x - r.len / 2, y);
+      ctx.quadraticCurveTo(x, y - 3, x + r.len / 2, y);
       ctx.stroke();
     }
-    // Pebbles
-    ctx.fillStyle = '#a99472';
-    const lo = wBottom(), hi = wTop();
-    for (const pb of pebbles) {
-      if (pb.w < lo || pb.w > hi) continue;
-      const p = roadAt(pb.w);
+    // Wake
+    for (const f of state.foam) {
+      const k = 1 - f.age / f.life;
+      ctx.fillStyle = `rgba(235,245,250,${0.55 * k})`;
       ctx.beginPath();
-      ctx.arc(p.x + pb.dx * (p.width / START_WIDTH), toScreenY(pb.w), pb.r, 0, Math.PI * 2);
+      ctx.arc(f.x, toScreenY(f.w), 2 + (1 - k) * 3, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.restore();
+
+    // Reeds on the bank edges
+    ctx.strokeStyle = '#4f6a33';
+    ctx.lineWidth = 1.5;
+    for (const r of reeds) {
+      if (r.w < lo || r.w > hi) continue;
+      const p = riverAt(r.w);
+      const x = p.x + r.side * (p.width / 2 + 2), y = toScreenY(r.w);
+      for (let k = 0; k < 3; k++) {
+        const a = (r.seed + k) * 1.3;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a) * 7 - r.side * 2, y - 6 - Math.sin(a) * 3);
+        ctx.stroke();
+      }
     }
   }
 
@@ -464,65 +506,102 @@
     }
   }
 
-  function drawFireflies(alphaScale = 1) {
-    for (const fl of state.fireflies) {
-      const x = roadAt(fl.w).x + fl.offset + Math.sin(state.time * 3 + fl.phase) * 5;
-      const y = toScreenY(fl.w) + Math.cos(state.time * 2.3 + fl.phase) * 4;
-      const k = (0.65 + 0.35 * Math.sin(state.time * 8 + fl.phase)) * alphaScale;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, 16);
-      g.addColorStop(0, `rgba(255,250,170,${k})`);
-      g.addColorStop(0.35, `rgba(220,255,120,${0.5 * k})`);
-      g.addColorStop(1, 'rgba(200,255,100,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
-  function drawSoldier(x, y, danger) {
-    const swing = Math.sin(state.step) * 4;
+  function drawBoat(x, y, tilt, danger) {
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.beginPath(); ctx.ellipse(2, 15, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2f3a22';
-    ctx.fillRect(-6, 4 + swing, 5, 10);
-    ctx.fillRect(1, 4 - swing, 5, 10);
-    ctx.fillStyle = danger > 0.5 ? '#8f4a38' : '#56683a';
+    ctx.rotate(tilt);
+    // Hull (pointing up the river)
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(3, 4, 11, 20, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = danger > 0.5 ? '#9a4d34' : '#8a5a33';
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(-9, -8, 18, 16, 5); else ctx.rect(-9, -8, 18, 16);
+    ctx.moveTo(0, -22);
+    ctx.quadraticCurveTo(12, -8, 11, 16);
+    ctx.lineTo(-11, 16);
+    ctx.quadraticCurveTo(-12, -8, 0, -22);
     ctx.fill();
-    ctx.fillStyle = '#3f4c2b';
-    ctx.fillRect(-7, -6, 14, 9); // backpack
-    ctx.fillStyle = '#e1b98f';
-    ctx.beginPath(); ctx.arc(0, -13, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#495a2e';
-    ctx.beginPath(); ctx.arc(0, -15, 8, Math.PI, 0); ctx.fill();
-    ctx.fillRect(-9, -15, 18, 2.5);
+    ctx.fillStyle = '#b07a46';
+    ctx.beginPath();
+    ctx.moveTo(0, -17);
+    ctx.quadraticCurveTo(8, -6, 7.5, 13);
+    ctx.lineTo(-7.5, 13);
+    ctx.quadraticCurveTo(-8, -6, 0, -17);
+    ctx.fill();
+    // Seats
+    ctx.fillStyle = '#6e4626';
+    ctx.fillRect(-7, -4, 14, 3);
+    ctx.fillRect(-7, 6, 14, 3);
+    // Sailor in a yellow raincoat
+    ctx.fillStyle = '#e0b43c';
+    ctx.beginPath(); ctx.arc(0, 1, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c6962a';
+    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+    // Bow lamp
+    ctx.fillStyle = '#ffe9a8';
+    ctx.beginPath(); ctx.arc(0, -18, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawHelicopter() {
+    const target = state.mode === 'play' ? spotTarget() : null;
+    if (!target) return;
+    const { x, y } = state.heli;
+    // Shadow-free silhouette seen from above, a bit offset as if it hovers to the side of its beam
+    ctx.save();
+    ctx.translate(x + 18, y - 22);
+    ctx.rotate(-0.35);
+    ctx.fillStyle = '#2b3138';
+    ctx.beginPath(); ctx.ellipse(0, 0, 7, 12, 0, 0, Math.PI * 2); ctx.fill(); // body
+    ctx.fillRect(-1.5, 10, 3, 16); // tail
+    ctx.fillRect(-5, 24, 10, 2.5);  // tail rotor
+    ctx.fillStyle = '#6fa8c8';
+    ctx.beginPath(); ctx.ellipse(0, -6, 4.5, 4, 0, 0, Math.PI * 2); ctx.fill(); // cockpit
+    // Spinning rotor
+    const a = state.time * 30;
+    ctx.strokeStyle = 'rgba(200,210,220,0.55)';
+    ctx.lineWidth = 2;
+    for (let k = 0; k < 2; k++) {
+      const ang = a + k * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(ang) * -20, Math.sin(ang) * -20);
+      ctx.lineTo(Math.cos(ang) * 20, Math.sin(ang) * 20);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(200,210,220,0.08)';
+    ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill();
+    // Blinking light
+    if (Math.sin(state.time * 8) > 0.6) {
+      ctx.fillStyle = '#ff4d4d';
+      ctx.beginPath(); ctx.arc(0, 25, 2, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
   }
 
   function drawDarkness() {
-    // Build the darkness layer, then cut soft holes where there is light
-    const amb = state.mode === 'play' ? state.params.ambient : 0.55;
+    const amb = state.mode === 'play' ? state.params.ambient : 0.5;
     dctx.globalCompositeOperation = 'source-over';
     dctx.clearRect(0, 0, W, H);
-    dctx.fillStyle = `rgba(3,5,12,${amb})`;
+    dctx.fillStyle = `rgba(2,4,12,${amb})`;
     dctx.fillRect(0, 0, W, H);
     dctx.globalCompositeOperation = 'destination-out';
     const hole = (x, y, r, strength) => {
-      const g = dctx.createRadialGradient(x, y, r * 0.15, x, y, r);
+      if (strength <= 0.01) return;
+      const g = dctx.createRadialGradient(x, y, r * 0.2, x, y, r);
       g.addColorStop(0, `rgba(0,0,0,${strength})`);
-      g.addColorStop(0.65, `rgba(0,0,0,${strength * 0.8})`);
+      g.addColorStop(0.6, `rgba(0,0,0,${strength * 0.8})`);
       g.addColorStop(1, 'rgba(0,0,0,0)');
       dctx.fillStyle = g;
       dctx.beginPath(); dctx.arc(x, y, r, 0, Math.PI * 2); dctx.fill();
     };
     if (state.mode === 'play') {
-      hole(state.soldierX, SOLDIER_Y, 46, 0.75); // a little light around the soldier
-      const L = lightPos();
-      if (L) hole(L.x, L.y, state.params.lightR, 1);
-      const mem = memoryShape();
-      if (mem) { dctx.fillStyle = mem.fill; dctx.fill(mem.shape); }
+      // Spots you lit a moment ago fade out where they were
+      const mem = state.params.memory;
+      for (const m of state.marks) {
+        const a = 1 - (state.time - m.t) / mem;
+        hole(m.x, toScreenY(m.w), m.r * 0.9, 0.12 * a);
+      }
+      hole(state.boatX, BOAT_Y - 10, 48, 0.8); // the boat's own lamp
+      if (spotTarget()) hole(state.heli.x, state.heli.y, state.params.lightR, 1);
     }
     dctx.globalCompositeOperation = 'source-over';
     ctx.save();
@@ -530,53 +609,32 @@
     ctx.drawImage(dark, 0, 0);
     ctx.restore();
 
-    // Warm tint inside the flashlight beam
-    const L = state.mode === 'play' ? lightPos() : null;
-    if (L) {
+    // Cool white tint inside the spotlight
+    if (state.mode === 'play' && spotTarget()) {
       const r = state.params.lightR;
-      const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, r);
-      g.addColorStop(0, 'rgba(255,220,140,0.16)');
-      g.addColorStop(1, 'rgba(255,220,140,0)');
+      const { x, y } = state.heli;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(225,240,255,0.16)');
+      g.addColorStop(1, 'rgba(225,240,255,0)');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(L.x, L.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  // Road you lit a moment ago stays faintly visible as it fades.
-  // Built as one shape with a vertical gradient, so there are no seams.
-  function memoryShape() {
-    const mem = state.params.memory;
-    const yTop = -40, yBot = H + 40;
-    const i0 = pointIndex(Math.max(0, toWorld(yBot))), i1 = pointIndex(toWorld(yTop));
-    const shape = new Path2D();
-    const fill = dctx.createLinearGradient(0, yTop, 0, yBot);
-    const edge = ctx.createLinearGradient(0, yTop, 0, yBot);
-    let any = false;
-    for (let i = i0; i <= i1; i++) {
-      const p = road.pts[i]; if (!p) continue;
-      const y = toScreenY(i * STEP);
-      if (i === i0) shape.moveTo(p.x - p.width / 2, y); else shape.lineTo(p.x - p.width / 2, y);
-      const a = Math.max(0, 1 - (state.time - p.seen) / mem);
-      if (a > 0) any = true;
-      const t = Math.max(0, Math.min(1, (y - yTop) / (yBot - yTop)));
-      fill.addColorStop(t, `rgba(0,0,0,${0.6 * a})`);
-      edge.addColorStop(t, `rgba(232,204,150,${0.5 * a})`);
+  function drawLanterns() {
+    for (const ln of state.lanterns) {
+      const x = riverAt(ln.w).x + ln.offset + Math.sin(state.time * 1.5 + ln.phase) * 3;
+      const y = toScreenY(ln.w);
+      const k = 0.75 + 0.25 * Math.sin(state.time * 5 + ln.phase);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 18);
+      g.addColorStop(0, `rgba(255,214,120,${0.9 * k})`);
+      g.addColorStop(0.35, `rgba(255,170,70,${0.45 * k})`);
+      g.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffe7a3';
+      ctx.fillRect(x - 2.5, y - 3.5, 5, 7);
     }
-    for (let i = i1; i >= i0; i--) {
-      const p = road.pts[i]; if (!p) continue;
-      shape.lineTo(p.x + p.width / 2, toScreenY(i * STEP));
-    }
-    shape.closePath();
-    return any ? { shape, fill, edge } : null;
-  }
-
-  function drawMemoryEdges() {
-    if (state.mode !== 'play') return;
-    const mem = memoryShape();
-    if (!mem) return;
-    ctx.strokeStyle = mem.edge;
-    ctx.lineWidth = 2;
-    ctx.stroke(mem.shape);
   }
 
   function drawPad() {
@@ -590,7 +648,8 @@
     ctx.beginPath(); ctx.moveTo(0, PAD_TOP); ctx.lineTo(W, PAD_TOP); ctx.stroke();
     ctx.setLineDash([]);
     if (state.mode === 'play' && state.playTime < 6) {
-      text('◀  drag here to steer  ▶', W / 2, PAD_TOP + 60, 15, 'rgba(255,255,255,0.7)', 'center', '600');
+      text('◀  drag here to steer the boat  ▶', W / 2, PAD_TOP + 50, 14, 'rgba(255,255,255,0.75)', 'center', '600');
+      text('touch above to fly the helicopter', W / 2, PAD_TOP + 78, 13, 'rgba(255,255,255,0.55)', 'center', '500');
     }
   }
 
@@ -599,15 +658,15 @@
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
     ctx.lineWidth = Math.max(3, size / 7);
-    ctx.strokeStyle = 'rgba(3,5,12,0.85)';
+    ctx.strokeStyle = 'rgba(2,4,12,0.85)';
     ctx.strokeText(str, x, y);
     ctx.fillStyle = color;
     ctx.fillText(str, x, y);
   }
 
   function panel(x, y, w, h) {
-    ctx.fillStyle = 'rgba(14,18,12,0.9)';
-    ctx.strokeStyle = 'rgba(232,204,150,0.45)';
+    ctx.fillStyle = 'rgba(8,16,24,0.9)';
+    ctx.strokeStyle = 'rgba(150,205,235,0.45)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, w, h, 16); else ctx.rect(x, y, w, h);
@@ -617,45 +676,46 @@
 
   function drawUI() {
     const pulse = 0.6 + 0.4 * Math.sin(state.time * 4);
+    const title = '#cfe8f5', warm = '#ffd98a', soft = '#a9bccb';
     if (state.mode === 'menu') {
       panel(28, 62, W - 56, 318);
-      text('NIGHT WATCH', W / 2, 104, 38, '#f2dca8');
-      text('Get the soldier through the forest.', W / 2, 144, 15, '#e8e4d6', 'center', '600');
+      text('NIGHT WATCH', W / 2, 104, 38, title);
+      text('Get the boat down the river.', W / 2, 144, 15, '#e6eef4', 'center', '600');
       const rows = [
-        ['Thumb on the bottom pad', 'steers the soldier'],
-        ['Another finger above it', 'is your flashlight'],
-        ['Let go of the pad', 'and he walks straight'],
-        ['Fireflies', '+10 points'],
+        ['Thumb on the bottom pad', 'steers the boat'],
+        ['Another finger above it', 'flies the helicopter spotlight'],
+        ['Let go of the pad', 'and the boat goes straight'],
+        ['Floating lanterns', '+10 points'],
       ];
       rows.forEach(([a, b], i) => {
         const y = 186 + i * 42;
-        text(a, W / 2, y, 15, '#f2dca8', 'center', '700');
-        text(b, W / 2, y + 17, 13, '#b9b6a6', 'center', '500');
+        text(a, W / 2, y, 15, warm, 'center', '700');
+        text(b, W / 2, y + 17, 13, soft, 'center', '500');
       });
-      text('Every level is darker, faster and narrower.', W / 2, 356, 12, '#9c998b', 'center', '500');
-      if (state.best > 0) text(`Best: ${state.best}`, W / 2, 412, 18, '#f2dca8', 'center', '700');
+      text('Every level is darker, faster and narrower.', W / 2, 356, 12, '#8197a6', 'center', '500');
+      if (state.best > 0) text(`Best: ${state.best}`, W / 2, 412, 18, warm, 'center', '700');
       ctx.globalAlpha = pulse;
       text(hasTouch ? 'Tap to start' : 'Click or press Space to start', W / 2, PAD_TOP + 70, 20, '#ffffff', 'center', '700');
       ctx.globalAlpha = 1;
     } else if (state.mode === 'play') {
       text(String(score()), W / 2, 46, 40);
-      text(`Level ${state.level}`, 14, 30, 14, '#f2dca8', 'left', '700');
+      text(`Level ${state.level}`, 14, 30, 14, warm, 'left', '700');
       if (state.banner) {
         const a = Math.min(1, state.banner.age * 4, (2.4 - state.banner.age) * 2);
         ctx.globalAlpha = Math.max(0, a);
-        text(state.banner.text, W / 2, 150, 34, '#f2dca8');
-        text(state.banner.sub, W / 2, 186, 16, '#e8e4d6', 'center', '600');
+        text(state.banner.text, W / 2, 150, 34, title);
+        text(state.banner.sub, W / 2, 186, 16, '#e6eef4', 'center', '600');
         ctx.globalAlpha = 1;
       }
     } else if (state.mode === 'over') {
-      panel(36, 120, W - 72, 230);
-      text(state.reason, W / 2, 158, 28, '#ff9b7a');
-      text(`Reached level ${state.level}`, W / 2, 192, 15, '#b9b6a6', 'center', '600');
-      text('Score', W / 2 - 65, 228, 15, '#b9b6a6', 'center', '600');
-      text('Best', W / 2 + 65, 228, 15, '#b9b6a6', 'center', '600');
+      panel(30, 120, W - 60, 230);
+      text(state.reason, W / 2, 158, 25, '#ff9b7a');
+      text(`Reached level ${state.level}`, W / 2, 192, 15, soft, 'center', '600');
+      text('Score', W / 2 - 65, 228, 15, soft, 'center', '600');
+      text('Best', W / 2 + 65, 228, 15, soft, 'center', '600');
       text(String(score()), W / 2 - 65, 264, 40);
-      text(String(state.best), W / 2 + 65, 264, 40, '#f2dca8');
-      if (state.newBest) text('New best!', W / 2, 312, 20, '#bde38a', 'center', '700');
+      text(String(state.best), W / 2 + 65, 264, 40, warm);
+      if (state.newBest) text('New best!', W / 2, 312, 20, '#9fe0c0', 'center', '700');
       if (state.time - state.overAt > 0.8) {
         ctx.globalAlpha = pulse;
         text('Tap to play again', W / 2, PAD_TOP + 70, 20, '#ffffff', 'center', '700');
@@ -664,7 +724,7 @@
     }
     for (const p of state.popups) {
       ctx.globalAlpha = 1 - p.age / 0.9;
-      text(`+${FIREFLY_BONUS}`, p.x, p.y, 20, '#f4ff9a');
+      text(`+${LANTERN_BONUS}`, p.x, p.y, 20, warm);
       ctx.globalAlpha = 1;
     }
   }
@@ -672,13 +732,13 @@
   function draw() {
     ctx.save();
     if (state.shake > 0) ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
-    drawGround();
-    drawRoad();
+    drawLand();
+    drawRiver();
     drawScenery();
-    drawSoldier(state.soldierX, SOLDIER_Y, state.mode === 'play' ? state.edge : 0);
+    drawBoat(state.boatX, BOAT_Y, state.mode === 'play' ? state.boatTilt : 0, state.mode === 'play' ? state.edge : 0);
     drawDarkness();
-    drawMemoryEdges();
-    drawFireflies(state.mode === 'play' ? 0.9 : 0);
+    if (state.mode === 'play') drawLanterns();
+    drawHelicopter();
     if (state.mode === 'play' && state.edge > 0) {
       ctx.fillStyle = `rgba(255,50,40,${0.15 * state.edge})`;
       ctx.fillRect(0, 0, W, H);

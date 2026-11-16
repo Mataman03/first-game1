@@ -1,14 +1,14 @@
 # Night Watch
 
-Get a soldier down a dirt road through a forest at night.
+Steer a boat down a river at night while a helicopter lights the way.
 
-- **Thumb on the bottom pad steers the soldier** left and right. Let go and he keeps walking straight, which is fine until the road turns.
-- **Another finger anywhere above the pad is your flashlight.** It lights up the road around it, and lit road stays faintly visible for a moment, so light the way ahead and remember where it goes.
-- **Walk off the road and the run ends.** The screen turns red and the phone buzzes as you get close to the edge.
-- **Catch fireflies** for +10 bonus points.
-- **Every level the night gets darker:** faster, narrower road, smaller flashlight, and lit road fades sooner.
+- **Thumb on the bottom pad steers the boat** left and right. Let go and the boat keeps going straight, which is fine until the river bends.
+- **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger so you can see what it lights. Spots you lit stay faintly visible for a moment, so scout the river ahead and remember where it bends.
+- **Hit the bank and the run ends.** The screen turns red and the phone buzzes as you get close to the edge.
+- **Pick up floating lanterns** for +10 bonus points.
+- **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.
 
-On a computer, drag with the mouse or use the arrow keys; the flashlight points ahead of the soldier.
+On a computer, drag with the mouse or use the arrow keys; the helicopter flies ahead of the boat.
 
 Score = distance travelled + firefly bonuses. Your best score is saved on the device.
 
