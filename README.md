@@ -3,10 +3,19 @@
 Steer a boat down a river at night while a helicopter lights the way.
 
 - **Thumb on the bottom pad steers the boat** left and right. Let go and the boat keeps going straight, which is fine until the river bends.
-- **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger so you can see what it lights. Spots you lit stay faintly visible for a moment, so scout the river ahead and remember where it bends.
-- **Hit the bank and the run ends.** The screen turns red and the phone buzzes as you get close to the edge.
-- **Pick up floating lanterns** for +10 bonus points.
+- **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger. Spots you lit stay faintly visible for a moment, so scout ahead and remember the way.
+- **The river splits** around wooded islands. Often one side is blocked by rocks and a fallen log, so light it before you choose.
+- **Hit the bank, the island or the rocks and the run ends.**
 - **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.
+
+### Menu, coins and shop
+
+- **Main menu:** Play, Shop, High scores, How to play.
+- **Coins:** 1 per lantern plus 1 per 50 points, added after each run.
+- **Shop:** spotlight, memory and boat-lamp upgrades (3 levels each), life jackets (each saves you from one crash, carry up to 3), and 5 boats.
+- **High scores:** your top 10 runs on this device, plus an "Everyone" leaderboard. That leaderboard works in the web version when signed in to Claude; in the Android app it's planned for Google Play Games.
+
+Progress (coins, upgrades, boats, scores) is saved on the device.
 
 On a computer, drag with the mouse or use the arrow keys; the helicopter flies ahead of the boat.
 
