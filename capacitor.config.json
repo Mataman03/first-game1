@@ -1,8 +1,8 @@
 {
-  "appId": "com.mataman03.cometdash",
-  "appName": "Comet Dash",
+  "appId": "com.mataman03.nightwatch",
+  "appName": "Night Watch",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#0b1026"
+    "backgroundColor": "#05070f"
   }
 }

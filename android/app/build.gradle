@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.mataman03.cometdash"
+    namespace "com.mataman03.nightwatch"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.mataman03.cometdash"
+        applicationId "com.mataman03.nightwatch"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI sets VERSION_CODE so every upload to Google Play has a higher number

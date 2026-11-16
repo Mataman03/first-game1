@@ -1,4 +1,4 @@
-package com.mataman03.cometdash;
+package com.mataman03.nightwatch;
 
 import com.getcapacitor.BridgeActivity;
 

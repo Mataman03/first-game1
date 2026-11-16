@@ -53,11 +53,11 @@ jobs:
       - name: Upload debug APK (install on your phone to test)
         uses: actions/upload-artifact@v4
         with:
-          name: comet-dash-debug-apk
+          name: night-watch-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
 
       - name: Upload release bundle (upload this to Google Play)
         uses: actions/upload-artifact@v4
         with:
-          name: comet-dash-release-aab
+          name: night-watch-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
