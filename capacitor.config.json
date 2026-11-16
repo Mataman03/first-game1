@@ -1,0 +1,8 @@
+{
+  "appId": "com.mataman03.cometdash",
+  "appName": "Comet Dash",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0b1026"
+  }
+}

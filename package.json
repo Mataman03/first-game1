@@ -1,0 +1,17 @@
+{
+  "name": "comet-dash",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Comet Dash - a simple tap-to-fly arcade game",
+  "scripts": {
+    "serve": "npx --yes http-server www -p 8080 -c-1",
+    "sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10"
+  }
+}
