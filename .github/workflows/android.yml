@@ -2,8 +2,16 @@ name: Build Android
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
+    paths-ignore: ['README.md']
   workflow_dispatch:
+
+permissions:
+  contents: write # lets the job publish the APK as a GitHub Release
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -61,3 +69,16 @@ jobs:
         with:
           name: night-watch-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: Publish the APK as a download link (GitHub Release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk NightWatch.apk
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" NightWatch.apk \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --prerelease \
+            --title "Night Watch test build ${{ github.run_number }}" \
+            --notes "Test build from branch ${{ github.ref_name }} (commit ${{ github.sha }}). On your Android phone, download NightWatch.apk below and open it to install. You may need to allow installing apps from your browser."
