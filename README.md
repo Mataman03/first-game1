@@ -4,7 +4,7 @@ Steer a boat down a river at night while a helicopter lights the way. Every run 
 
 - **Thumb on the bottom pad is a joystick.** Left and right steer; push it forward to go faster (there's no brake). Let go and the boat keeps going straight at normal speed.
 - **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger. Spots you lit stay faintly visible for a moment, so scout ahead and remember the way.
-- **The river splits** around wooded islands. Often one side is blocked by rocks and a fallen log, so light it before you choose.
+- **The river splits** around wooded islands. Often one side is blocked by rocks and a fallen log with blinking red warning lights.
 - **Hit the bank, the island or the rocks and the run ends.**
 - **Pause** with the button in the top-right corner (Resume, Restart, Quit). The game also pauses if you leave the app.
 - **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.

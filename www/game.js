@@ -68,7 +68,7 @@
       world: { startWidth: 165, minWidth: 125, narrowRate: 0.012, turn: 2.2, forks: false } },
     { name: 'The Split', tip: 'The river splits around islands. Both ways are open. Pick one!', length: 3000, speed: 100, lightR: 110, memory: 2, ambient: 0.962,
       world: { startWidth: 155, minWidth: 120, narrowRate: 0.01, turn: 2, forks: true, firstFork: 600, forkGap: [350, 600], forkLen: [500, 620], blockChance: 0 } },
-    { name: 'Blocked Way', tip: 'Now one side of every split is blocked. Light it before you choose.', length: 3300, speed: 105, lightR: 108, memory: 1.9, ambient: 0.965,
+    { name: 'Blocked Way', tip: 'One side of every split is blocked. Look for the red lights!', length: 3300, speed: 105, lightR: 108, memory: 1.9, ambient: 0.965,
       world: { startWidth: 150, minWidth: 115, narrowRate: 0.01, turn: 2, forks: true, firstFork: 600, forkGap: [350, 600], forkLen: [500, 620], blockChance: 1 } },
     { name: 'The Narrows', tip: 'The river gets very thin. Small, careful moves.', length: 3400, speed: 105, lightR: 105, memory: 1.8, ambient: 0.965,
       world: { startWidth: 140, minWidth: 68, narrowRate: 0.03, turn: 2.4, forks: true, firstFork: 1600, forkGap: [1200, 1500], blockChance: 0.6 } },
@@ -250,7 +250,7 @@
           const r = rng();
           const blocked = r < world.blockChance ? (rng() < 0.5 ? -1 : 1) : 0;
           river.fork = { start: w, len, blocked };
-          if (blocked) blockers.push({ w: w + len * 0.5, side: blocked, seed: rng() * 10 });
+          if (blocked) blockers.push({ w: w + len * 0.33, side: blocked, seed: rng() * 10 });
         }
       }
 
@@ -946,6 +946,29 @@
     }
   }
 
+  // Small red warning lights on a blocking log: they show that a way is blocked, not where the river goes
+  function drawBlockerLights() {
+    if (!(playing() || state.screen === 'paused')) return;
+    const on = Math.sin(state.time * 6) > -0.2;
+    for (const b of blockers) {
+      const y = toScreenY(b.w);
+      if (y < -30 || y > H + 30) continue;
+      const p = riverAt(b.w);
+      if (p.island < 10) continue;
+      const inner = p.x + b.side * p.island, outer = p.x + b.side * p.width / 2;
+      for (const t of [0.3, 0.7]) {
+        const x = inner + (outer - inner) * t;
+        const g = ctx.createRadialGradient(x, y - 6, 0, x, y - 6, 16);
+        g.addColorStop(0, `rgba(255,70,50,${on ? 0.8 : 0.3})`);
+        g.addColorStop(1, 'rgba(255,70,50,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y - 6, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = on ? '#ff8a70' : '#8a3a30';
+        ctx.beginPath(); ctx.arc(x, y - 6, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
   function drawFinishLights() {
     if (state.mode !== 'level' || !playing()) return;
     const fw = finishW();
@@ -1505,7 +1528,7 @@
       ['Fly the helicopter', 'Touch anywhere above the pad with another finger. Its spotlight shows the river.'],
       ['Remember the river', 'Lit spots stay visible for a moment, so scout ahead, then steer.'],
       ['Supply crates', 'They float in the dark. Light them up to find them, then steer into them: +10 points and 1 coin each.'],
-      ['The river splits', 'Pick a side. Rocks or a fallen log can block one way, so light it first.'],
+      ['The river splits', 'Pick a side. A fallen log can block one way: look for its blinking red lights, or light it up first.'],
       ['Levels', 'Reach the dock to finish. Floating supply crates give stars: half of them for 2 stars, all for 3.'],
       ['Endless', 'It gets darker and faster until you crash. Coins: 1 per crate and 1 per 50 points.'],
     ];
@@ -1680,7 +1703,12 @@
     }
     for (const p of state.popups) {
       ctx.globalAlpha = 1 - p.age / 0.9;
-      text(`+${LANTERN_BONUS}`, p.x, p.y, 20, C.warm); // crate picked up
+      if (state.mode === 'level') { // in levels a crate is worth a coin
+        coin(p.x - 12, p.y, 7);
+        text('+1', p.x + 2, p.y + 1, 20, C.warm, 'left');
+      } else { // in endless it adds to the score
+        text(`+${LANTERN_BONUS}`, p.x, p.y, 20, C.warm);
+      }
       ctx.globalAlpha = 1;
     }
   }
@@ -1813,6 +1841,7 @@
     drawDarkness();
     drawFinishLights();
     drawWorldLights();
+    drawBlockerLights();
     drawHelicopter();
     if (playing() && state.edge > 0 && state.invuln <= 0) {
       ctx.fillStyle = `rgba(255,50,40,${0.15 * state.edge})`;
