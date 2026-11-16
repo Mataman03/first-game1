@@ -1,14 +1,14 @@
 # Night Watch
 
-A two-finger game in the dark.
+Get a soldier down a dirt road through a forest at night.
 
-- **Finger 1 walks the soldier.** Hold the start circle, then drag; the soldier walks just above your finger. **Lift this finger and the run ends.**
-- **Finger 2 is your flashlight.** Wherever you hold it, the path lights up. Lit parts stay visible for a moment after the light moves on, so light the way ahead, remember it, and walk.
-- **Keep the soldier on the path.** Step off it and you're lost in the dark. The screen turns red and the phone buzzes as you get close to the edge.
-- **Catch fireflies** with the soldier for +10 bonus points.
-- The path gets **faster, narrower and twistier** the longer you survive.
+- **Thumb on the bottom pad steers the soldier** left and right. Let go and he keeps walking straight, which is fine until the road turns.
+- **Another finger anywhere above the pad is your flashlight.** It lights up the road around it, and lit road stays faintly visible for a moment, so light the way ahead and remember where it goes.
+- **Walk off the road and the run ends.** The screen turns red and the phone buzzes as you get close to the edge.
+- **Catch fireflies** for +10 bonus points.
+- **Every level the night gets darker:** faster, narrower road, smaller flashlight, and lit road fades sooner.
 
-On a computer (one mouse), the flashlight follows a little ahead of the soldier.
+On a computer, drag with the mouse or use the arrow keys; the flashlight points ahead of the soldier.
 
 Score = distance travelled + firefly bonuses. Your best score is saved on the device.
 
@@ -22,7 +22,7 @@ Open `www/index.html` in a browser, or run:
 npm run serve
 ```
 
-Then go to http://localhost:8080. On a computer, hold the mouse button on the start circle and drag.
+Then go to http://localhost:8080. On a computer, click to start, then drag with the mouse or use the arrow keys.
 
 ## How the Android build works
 
