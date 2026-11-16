@@ -8,14 +8,19 @@ Steer a boat down a river at night while a helicopter lights the way.
 - **Hit the bank, the island or the rocks and the run ends.**
 - **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.
 
-### Menu, coins and shop
+### Two ways to play
 
-- **Main menu:** Play, Shop, High scores, How to play.
-- **Coins:** 1 per lantern plus 1 per 50 points, added after each run.
+- **Levels:** 10 levels, each with its own river (the same layout every time, so you can learn it) and a dock at the end. Lanterns earn stars: finish for 1, collect half the lanterns for 2, all of them for 3. Finishing a level unlocks the next one.
+  1. First Light · 2. Gentle Bends · 3. The Split · 4. Blocked Way · 5. The Narrows · 6. Moonless Night · 7. Fast Water · 8. Island Maze · 9. Fading Memory · 10. Night Run
+- **Endless:** the river never ends. Every stage is darker and faster, with a narrower river. This mode has the high scores and leaderboard.
+
+### Coins and shop
+
+- **Coins:** 1 per lantern in both modes, plus 1 per 50 points in Endless and a first-time bonus for each level.
 - **Shop:** spotlight, memory and boat-lamp upgrades (3 levels each), life jackets (each saves you from one crash, carry up to 3), and 5 boats.
-- **High scores:** your top 10 runs on this device, plus an "Everyone" leaderboard. That leaderboard works in the web version when signed in to Claude; in the Android app it's planned for Google Play Games.
+- **High scores:** your top 10 Endless runs on this device, plus an "Everyone" leaderboard. That leaderboard works in the web version when signed in to Claude; in the Android app it's planned for Google Play Games.
 
-Progress (coins, upgrades, boats, scores) is saved on the device.
+Progress (stars, coins, upgrades, boats, scores) is saved on the device.
 
 On a computer, drag with the mouse or use the arrow keys; the helicopter flies ahead of the boat.
 

@@ -13,27 +13,70 @@
   const HELI_OFFSET = 70;    // the helicopter flies this far above your finger
   const STEP = 8;            // world px between river points
 
-  // Difficulty per level
-  const LEVEL_LENGTH = 1400;
-  function levelParams(level) {
-    const n = Math.min(level, 10) - 1;
-    const up = save.upgrades;
-    return {
-      speed: 95 + n * 20,
-      lightR: Math.max(60, 105 - n * 5) * (1 + 0.1 * up.spot),
-      memory: Math.max(0.45, 1.8 - n * 0.16) * (1 + 0.2 * up.memory),
-      ambient: Math.min(0.985, 0.9 + n * 0.012),
-      lampR: 48 * (1 + 0.25 * up.lamp),
-    };
-  }
-  const START_WIDTH = 160;
-  const MIN_WIDTH = 60;
-  const NARROW_RATE = 0.0085;
   const STEER_GAIN = 1.25;
   const LANTERN_EVERY = 360;
   const LANTERN_BONUS = 10;
   const ISLAND_MAX = 46;     // half-width of the island when the river splits
-  const FIRST_FORK = 1100;   // world px before the first split
+
+  // Seeded random numbers, so a level's river is the same every time you play it
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  let rng = Math.random;        // river and scenery
+  let lanternRng = Math.random; // lantern placement
+
+  // How the river is shaped
+  const ENDLESS_WORLD = {
+    startWidth: 160, minWidth: 60, narrowRate: 0.0085, turn: 1.5, turnGrow: 1 / 3000,
+    forks: true, firstFork: 1100, forkGap: [900, 2000], blockChance: 0.7,
+  };
+  let world = ENDLESS_WORLD;
+
+  // Endless mode gets harder every ENDLESS_STEP px
+  const ENDLESS_STEP = 1400;
+  function endlessParams(stage) {
+    const n = Math.min(stage, 10) - 1;
+    return withUpgrades({
+      speed: 95 + n * 20,
+      lightR: Math.max(60, 105 - n * 5),
+      memory: Math.max(0.45, 1.8 - n * 0.16),
+      ambient: Math.min(0.985, 0.9 + n * 0.012),
+    });
+  }
+  function withUpgrades(p) {
+    const up = save.upgrades;
+    return { ...p, lightR: p.lightR * (1 + 0.1 * up.spot), memory: p.memory * (1 + 0.2 * up.memory), lampR: 48 * (1 + 0.25 * up.lamp) };
+  }
+
+  // The 10 levels. Each has a fixed river (seed), a finish line (length) and its own night.
+  const LEVELS = [
+    { name: 'First Light', tip: 'A wide, calm river. Learn to steer and light the way.', length: 2200, speed: 85, lightR: 125, memory: 2.4, ambient: 0.84,
+      world: { startWidth: 175, minWidth: 150, narrowRate: 0.01, turn: 1.1, forks: false } },
+    { name: 'Gentle Bends', tip: 'The river starts to wind. Look ahead before each bend.', length: 2600, speed: 95, lightR: 115, memory: 2.1, ambient: 0.87,
+      world: { startWidth: 165, minWidth: 125, narrowRate: 0.012, turn: 2.2, forks: false } },
+    { name: 'The Split', tip: 'The river splits around islands. Both ways are open. Pick one!', length: 3000, speed: 100, lightR: 110, memory: 2, ambient: 0.89,
+      world: { startWidth: 155, minWidth: 120, narrowRate: 0.01, turn: 2, forks: true, firstFork: 600, forkGap: [350, 600], forkLen: [500, 620], blockChance: 0 } },
+    { name: 'Blocked Way', tip: 'Now one side of every split is blocked. Light it before you choose.', length: 3300, speed: 105, lightR: 108, memory: 1.9, ambient: 0.9,
+      world: { startWidth: 150, minWidth: 115, narrowRate: 0.01, turn: 2, forks: true, firstFork: 600, forkGap: [350, 600], forkLen: [500, 620], blockChance: 1 } },
+    { name: 'The Narrows', tip: 'The river gets very thin. Small, careful moves.', length: 3400, speed: 105, lightR: 105, memory: 1.8, ambient: 0.9,
+      world: { startWidth: 140, minWidth: 68, narrowRate: 0.03, turn: 2.4, forks: true, firstFork: 1600, forkGap: [1200, 1500], blockChance: 0.6 } },
+    { name: 'Moonless Night', tip: 'Very dark, and your light is small. Keep scouting.', length: 3400, speed: 110, lightR: 88, memory: 1.4, ambient: 0.97,
+      world: { startWidth: 145, minWidth: 105, narrowRate: 0.012, turn: 2.6, forks: true, firstFork: 1000, forkGap: [900, 1200], blockChance: 0.7 } },
+    { name: 'Fast Water', tip: 'The current is strong. Light far ahead!', length: 3900, speed: 150, lightR: 105, memory: 1.6, ambient: 0.92,
+      world: { startWidth: 145, minWidth: 100, narrowRate: 0.01, turn: 2.6, forks: true, firstFork: 1200, forkGap: [1000, 1300], blockChance: 0.7 } },
+    { name: 'Island Maze', tip: 'Split after split after split.', length: 4100, speed: 120, lightR: 100, memory: 1.6, ambient: 0.93,
+      world: { startWidth: 150, minWidth: 110, narrowRate: 0.008, turn: 2.2, forks: true, firstFork: 450, forkGap: [150, 300], forkLen: [460, 540], blockChance: 0.85 } },
+    { name: 'Fading Memory', tip: 'Lit water goes dark again almost at once.', length: 4100, speed: 125, lightR: 92, memory: 0.6, ambient: 0.95,
+      world: { startWidth: 140, minWidth: 90, narrowRate: 0.012, turn: 2.8, forks: true, firstFork: 700, forkGap: [600, 900], blockChance: 0.8 } },
+    { name: 'Night Run', tip: 'Everything at once. Good luck, captain.', length: 5200, speed: 145, lightR: 82, memory: 0.75, ambient: 0.975,
+      world: { startWidth: 130, minWidth: 66, narrowRate: 0.014, turn: 3.2, forks: true, firstFork: 700, forkGap: [400, 600], forkLen: [520, 640], blockChance: 0.85 } },
+  ];
+  const levelWorld = (L) => ({ turnGrow: 0, firstFork: 1e9, forkGap: [1000, 1000], blockChance: 0, ...L.world });
 
   // ---------- Shop catalogue ----------
   const UPGRADES = [
@@ -57,7 +100,7 @@
     const base = {
       coins: 0, best: 0, bestLevel: 1, runs: 0, lanternsTotal: 0,
       upgrades: { spot: 0, memory: 0, lamp: 0 }, jackets: 0,
-      boats: ['wood'], boat: 'wood', top: [],
+      boats: ['wood'], boat: 'wood', top: [], stars: [],
     };
     try {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -176,11 +219,11 @@
 
   // ---------- World: river, islands, banks ----------
   // World coordinate w grows upward. A point at w is drawn at screen y = BOAT_Y - (w - distance).
-  const river = { pts: [], targetX: W / 2, x: W / 2, fork: null, nextForkW: FIRST_FORK, pendingFork: false };
+  const river = { pts: [], targetX: W / 2, x: W / 2, fork: null, nextForkW: ENDLESS_WORLD.firstFork };
   let scenery = [], ripples = [], reeds = [], blockers = [];
 
   function resetWorld() {
-    Object.assign(river, { pts: [], targetX: W / 2, x: W / 2, fork: null, nextForkW: FIRST_FORK, pendingFork: false });
+    Object.assign(river, { pts: [], targetX: W / 2, x: W / 2, fork: null, nextForkW: world.forks ? world.firstFork : Infinity });
     scenery = []; ripples = []; reeds = []; blockers = [];
   }
 
@@ -189,18 +232,19 @@
   function extendRiver(toW) {
     while (river.pts.length * STEP < toW) {
       const w = river.pts.length * STEP;
-      const base = Math.max(MIN_WIDTH, START_WIDTH - w * NARROW_RATE);
+      const base = Math.max(world.minWidth, world.startWidth - w * world.narrowRate);
       let width = base, island = 0;
 
       // Start a split when one is due and the river is near the middle
-      if (!river.fork && w >= river.nextForkW) {
+      if (!river.fork && w >= river.nextForkW && w < finishW() - 750) {
         river.targetX = W / 2;
-        if (Math.abs(river.x - W / 2) < 8) {
-          const len = 600 + Math.random() * 260;
-          const r = Math.random();
-          const blocked = r < 0.7 ? (Math.random() < 0.5 ? -1 : 1) : 0;
+        if (Math.abs(river.x - W / 2) < 16) {
+          const fl = world.forkLen || [600, 860];
+          const len = fl[0] + rng() * (fl[1] - fl[0]);
+          const r = rng();
+          const blocked = r < world.blockChance ? (rng() < 0.5 ? -1 : 1) : 0;
           river.fork = { start: w, len, blocked };
-          if (blocked) blockers.push({ w: w + len * 0.5, side: blocked, seed: Math.random() * 10 });
+          if (blocked) blockers.push({ w: w + len * 0.5, side: blocked, seed: rng() * 10 });
         }
       }
 
@@ -208,11 +252,11 @@
         const t = (w - river.fork.start) / river.fork.len;
         if (t >= 1) {
           river.fork = null;
-          river.nextForkW = w + 900 + Math.random() * 1100;
+          river.nextForkW = w + world.forkGap[0] + rng() * (world.forkGap[1] - world.forkGap[0]);
         } else {
           const b = t < 0.25 ? ease(t / 0.25) : t > 0.75 ? ease((1 - t) / 0.25) : 1;
           const channel = Math.max(52, base * 0.62);
-          island = b * ISLAND_MAX;
+          island = b * b * ISLAND_MAX; // the island grows a bit later than the river widens, so the channels never pinch
           width = base + (2 * channel + 2 * ISLAND_MAX - base) * b;
           river.targetX = W / 2;
         }
@@ -223,9 +267,9 @@
         river.x = river.targetX = W / 2;
       } else {
         if (!river.fork && w < river.nextForkW && Math.abs(river.targetX - river.x) < 4) {
-          river.targetX = margin + Math.random() * (W - margin * 2);
+          river.targetX = margin + rng() * (W - margin * 2);
         }
-        const maxSlope = Math.min(5, 1.5 + w / 3000);
+        const maxSlope = Math.min(5, world.turn + w * world.turnGrow);
         const dx = Math.max(-maxSlope, Math.min(maxSlope, (river.targetX - river.x) * 0.055));
         river.x = Math.max(margin, Math.min(W - margin, river.x + dx));
       }
@@ -233,35 +277,35 @@
 
       if (river.pts.length % 3 === 0) {
         for (const side of [-1, 1]) {
-          if (Math.random() < 0.55) {
-            const x = river.x + side * (width / 2 + 16 + Math.random() * 120);
+          if (rng() < 0.55) {
+            const x = river.x + side * (width / 2 + 16 + rng() * 120);
             if (x > -30 && x < W + 30) {
-              const r = Math.random();
+              const r = rng();
               scenery.push({
                 w, x,
                 kind: r < 0.55 ? 'tree' : r < 0.85 ? 'bush' : 'rock',
-                size: r < 0.55 ? 18 + Math.random() * 16 : 7 + Math.random() * 8,
-                hue: 95 + Math.random() * 40,
-                seed: Math.random() * 10,
+                size: r < 0.55 ? 18 + rng() * 16 : 7 + rng() * 8,
+                hue: 95 + rng() * 40,
+                seed: rng() * 10,
               });
             }
           }
-          if (Math.random() < 0.5) reeds.push({ w, side, seed: Math.random() * 10 });
+          if (rng() < 0.5) reeds.push({ w, side, seed: rng() * 10 });
         }
         // Trees on the island
-        if (island > 34 && Math.random() < 0.6) {
-          scenery.push({ w, x: river.x + (Math.random() - 0.5) * (island - 20), kind: Math.random() < 0.7 ? 'tree' : 'bush',
-            size: 12 + Math.random() * 10, hue: 95 + Math.random() * 40, seed: Math.random() * 10 });
+        if (island > 34 && rng() < 0.6) {
+          scenery.push({ w, x: river.x + (rng() - 0.5) * (island - 20), kind: rng() < 0.7 ? 'tree' : 'bush',
+            size: 12 + rng() * 10, hue: 95 + rng() * 40, seed: rng() * 10 });
         }
       }
-      if (Math.random() < 0.3) {
-        ripples.push({ w, dx: (Math.random() - 0.5) * 0.8, len: 6 + Math.random() * 10, phase: Math.random() * 6 });
+      if (rng() < 0.3) {
+        ripples.push({ w, dx: (rng() - 0.5) * 0.8, len: 6 + rng() * 10, phase: rng() * 6 });
       }
     }
   }
 
   function riverAt(w) {
-    if (w < 0) return { x: W / 2, width: START_WIDTH, island: 0 };
+    if (w < 0) return { x: W / 2, width: world.startWidth, island: 0 };
     extendRiver(w + STEP * 2);
     const i = Math.floor(w / STEP);
     const t = (w - i * STEP) / STEP;
@@ -296,25 +340,63 @@
     edge: 0, warnTimer: 0, banner: null, reason: '',
     time: 0, overAt: 0, shake: 0, playTime: 0,
     toast: null,
+    mode: 'endless', levelIdx: 0, lanternTotal: 0, levelStars: 0, firstClear: false,
   };
-  state.params = levelParams(1);
-  window.__nightWatch = { state, riverAt, save, channelCenter, get blockers() { return blockers; } }; // handy for debugging in the browser console
+  state.params = endlessParams(1);
+  window.__nightWatch = { state, riverAt, save, channelCenter, LEVELS, startLevel: (i) => startGame('level', i), get blockers() { return blockers; } }; // handy for debugging in the browser console
 
   const score = () => Math.floor(state.distance / 10) + state.bonus;
   const playing = () => state.screen === 'play';
 
-  function startGame() {
+  const finishW = () => (state && state.mode === 'level' ? LEVELS[state.levelIdx].length : Infinity);
+  const levelUnlocked = (i) => i === 0 || (save.stars[i - 1] || 0) > 0;
+
+  function startGame(mode = state.mode, idx = state.levelIdx) {
+    state.mode = mode;
+    state.levelIdx = idx;
+    let p, banner;
+    if (mode === 'level') {
+      const L = LEVELS[idx];
+      world = levelWorld(L);
+      rng = mulberry32(1000 + idx * 7919);
+      lanternRng = mulberry32(5000 + idx * 104729);
+      p = withUpgrades({ speed: L.speed, lightR: L.lightR, memory: L.memory, ambient: L.ambient });
+      banner = { text: `Level ${idx + 1}: ${L.name}`, sub: L.tip, age: 0 };
+    } else {
+      world = ENDLESS_WORLD;
+      rng = Math.random;
+      lanternRng = Math.random;
+      p = endlessParams(1);
+      banner = { text: 'Endless', sub: 'How far can you go?', age: 0 };
+    }
     resetWorld();
-    const p = levelParams(1);
     Object.assign(state, {
       screen: 'play', distance: 0, level: 1, params: p, speed: p.speed,
-      bonus: 0, lanterns: 0, newBest: false, coinsEarned: 0, jacketsUsed: 0,
+      bonus: 0, lanterns: 0, lanternTotal: 0, newBest: false, coinsEarned: 0, jacketsUsed: 0,
       boatX: W / 2, boatTilt: 0, invuln: 0, marks: [], foam: [],
       lanternsList: [], nextLanternW: LANTERN_EVERY, popups: [], edge: 0, reason: '', playTime: 0,
-      banner: { text: 'Level 1', sub: 'Light the river ahead', age: 0 },
+      banner, levelStars: 0, firstClear: false,
     });
     sfx.start();
     vibrate(30);
+  }
+
+  function winLevel() {
+    state.screen = 'win';
+    state.overAt = state.time;
+    const i = state.levelIdx;
+    const total = Math.max(1, state.lanternTotal);
+    const stars = state.lanterns >= total ? 3 : state.lanterns >= total / 2 ? 2 : 1;
+    state.levelStars = stars;
+    state.firstClear = !(save.stars[i] > 0);
+    state.coinsEarned = state.lanterns + (state.firstClear ? 10 + 5 * (i + 1) : 0);
+    save.stars[i] = Math.max(save.stars[i] || 0, stars);
+    save.coins += state.coinsEarned;
+    save.lanternsTotal += state.lanterns;
+    persist();
+    sfx.saved();
+    setTimeout(() => sfx.lantern(), 250);
+    vibrate([40, 40, 80]);
   }
 
   function crash(reason) {
@@ -344,6 +426,13 @@
     vibrate([100, 60, 140]);
 
     const s = score();
+    if (state.mode === 'level') {
+      state.coinsEarned = state.lanterns;
+      save.coins += state.coinsEarned;
+      save.lanternsTotal += state.lanterns;
+      persist();
+      return;
+    }
     state.coinsEarned = state.lanterns + Math.floor(s / 50);
     save.coins += state.coinsEarned;
     save.runs++;
@@ -423,7 +512,7 @@
     try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
 
     if (!playing()) {
-      if (state.screen === 'over' && state.time - state.overAt < 0.6) return;
+      if ((state.screen === 'over' || state.screen === 'win') && state.time - state.overAt < 0.6) return;
       for (const b of buttons) {
         if (!b.disabled && p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) { b.onTap(); break; }
       }
@@ -468,7 +557,7 @@
   const keys = {};
   window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (e.code === 'Space' && !e.repeat && (state.screen === 'menu' || state.screen === 'over')) startGame();
+    if (e.code === 'Space' && !e.repeat && (state.screen === 'menu' || state.screen === 'over')) startGame(state.screen === 'menu' ? 'endless' : state.mode);
     if (e.code === 'Escape' && !playing()) go('menu');
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -496,16 +585,17 @@
       state.playTime += dt;
       state.invuln = Math.max(0, state.invuln - dt);
 
-      const lvl = 1 + Math.floor(state.distance / LEVEL_LENGTH);
-      if (lvl !== state.level) {
+      const lvl = 1 + Math.floor(state.distance / ENDLESS_STEP);
+      if (state.mode === 'endless' && lvl !== state.level) {
         state.level = lvl;
-        state.params = levelParams(lvl);
-        state.banner = { text: `Level ${lvl}`, sub: 'The night gets darker', age: 0 };
+        state.params = endlessParams(lvl);
+        state.banner = { text: `Stage ${lvl}`, sub: 'The night gets darker', age: 0 };
         sfx.level();
         vibrate(40);
       }
       state.speed += (state.params.speed - state.speed) * Math.min(1, dt * 0.8);
       state.distance += state.speed * dt;
+      if (state.distance >= finishW()) { winLevel(); return; }
 
       if (keys.ArrowLeft || keys.KeyA) { state.boatX -= 200 * dt; state.boatTilt -= 2 * dt; }
       if (keys.ArrowRight || keys.KeyD) { state.boatX += 200 * dt; state.boatTilt += 2 * dt; }
@@ -550,19 +640,20 @@
 
       // Lanterns, kept out of a blocked channel
       const aheadW = state.distance + BOAT_Y + 40;
-      while (state.nextLanternW < aheadW) {
+      while (state.nextLanternW < Math.min(aheadW, finishW() - 150)) {
         const lw = state.nextLanternW;
+        state.lanternTotal++;
         const fp = riverAt(lw);
         let x;
         if (fp.island > 10) {
-          let side = Math.random() < 0.5 ? -1 : 1;
+          let side = lanternRng() < 0.5 ? -1 : 1;
           if (blockers.some((b) => b.side === side && Math.abs(b.w - lw) < 400)) side = -side;
           x = channelCenter(lw, side);
         } else {
-          x = fp.x + (Math.random() - 0.5) * fp.width * 0.5;
+          x = fp.x + (lanternRng() - 0.5) * fp.width * 0.5;
         }
         state.lanternsList.push({ w: lw, dx: x - fp.x, phase: Math.random() * 6, alive: true });
-        state.nextLanternW += LANTERN_EVERY * (0.7 + Math.random() * 0.6);
+        state.nextLanternW += LANTERN_EVERY * (0.7 + lanternRng() * 0.6);
       }
       for (const ln of state.lanternsList) {
         if (!ln.alive) continue;
@@ -577,7 +668,7 @@
         }
       }
       state.lanternsList = state.lanternsList.filter((ln) => ln.alive && toScreenY(ln.w) < H + 30);
-    } else if (state.screen !== 'over') {
+    } else if (state.screen !== 'over' && state.screen !== 'win') {
       state.distance += 30 * dt; // gentle drift behind the menus
     }
 
@@ -716,6 +807,8 @@
       }
     }
 
+    drawFinish();
+
     ctx.strokeStyle = '#4f6a33';
     ctx.lineWidth = 1.5;
     for (const r of reeds) {
@@ -729,6 +822,41 @@
         ctx.lineTo(x + Math.cos(a) * 7 - r.side * 2, y - 6 - Math.sin(a) * 3);
         ctx.stroke();
       }
+    }
+  }
+
+  // The finish: a wooden dock across the river with two lamp posts
+  function drawFinish() {
+    if (state.mode !== 'level') return;
+    const fw = finishW();
+    const y = toScreenY(fw);
+    if (y < -60 || y > H + 60) return;
+    const p = riverAt(fw);
+    const x0 = p.x - p.width / 2 - 14, x1 = p.x + p.width / 2 + 14;
+    ctx.fillStyle = '#5b3d22';
+    ctx.fillRect(x0, y - 9, x1 - x0, 18);
+    ctx.fillStyle = '#7a5532';
+    for (let x = x0; x < x1; x += 10) ctx.fillRect(x + 1, y - 8, 8, 16);
+    for (let k = 0; k < Math.floor((x1 - x0) / 14); k++) {
+      ctx.fillStyle = k % 2 ? '#f2f0e8' : '#22262b';
+      ctx.fillRect(x0 + k * 14, y - 14, 14, 5);
+    }
+  }
+  function drawFinishLights() {
+    if (state.mode !== 'level' || !playing()) return;
+    const fw = finishW();
+    const y = toScreenY(fw);
+    if (y < -60 || y > H + 60) return;
+    const p = riverAt(fw);
+    for (const side of [-1, 1]) {
+      const x = p.x + side * (p.width / 2 + 14);
+      const g = ctx.createRadialGradient(x, y - 16, 0, x, y - 16, 40);
+      g.addColorStop(0, 'rgba(160,255,190,0.85)');
+      g.addColorStop(1, 'rgba(160,255,190,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y - 16, 40, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e9fff0';
+      ctx.beginPath(); ctx.arc(x, y - 16, 4, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -940,17 +1068,69 @@
     button(16, 16, 84, 36, '‹ Back', () => go('menu'), { size: 15 });
   }
 
+  function totalStars() { return save.stars.reduce((a, b) => a + (b || 0), 0); }
+
   function drawMenu() {
     coinBadge(W - 16, 34);
-    text('NIGHT', W / 2, 118, 52, C.title);
-    text('WATCH', W / 2, 168, 52, C.warm);
-    text('River patrol after dark', W / 2, 206, 15, C.soft, 'center', '600');
-    if (save.best > 0) text(`High score  ${save.best}`, W / 2, 246, 18, '#fff', 'center', '700');
-    button(70, 288, W - 140, 60, 'PLAY', startGame, { primary: true, size: 24 });
-    button(70, 362, W - 140, 46, 'Shop', () => go('shop'));
-    button(70, 420, W - 140, 46, 'High scores', () => go('scores'));
-    button(70, 478, W - 140, 46, 'How to play', () => go('how'));
-    if (save.jackets > 0) text(`Life jackets: ${save.jackets}`, W / 2, 552, 13, C.soft, 'center', '600');
+    text('NIGHT', W / 2, 112, 52, C.title);
+    text('WATCH', W / 2, 162, 52, C.warm);
+    text('River patrol after dark', W / 2, 200, 15, C.soft, 'center', '600');
+    button(60, 236, W - 120, 62, 'LEVELS', () => go('levels'), { primary: true, size: 24 });
+    text(`★ ${totalStars()} / ${LEVELS.length * 3}`, W / 2, 312, 14, C.warm, 'center', '700');
+    button(60, 330, W - 120, 52, 'ENDLESS', () => startGame('endless'), { size: 20 });
+    text(save.best > 0 ? `High score ${save.best}` : 'Go as far as you can', W / 2, 396, 13, C.soft, 'center', '600');
+    const half = (W - 132) / 2;
+    button(60, 418, half, 44, 'Shop', () => go('shop'), { size: 15 });
+    button(72 + half, 418, half, 44, 'High scores', () => go('scores'), { size: 15 });
+    button(60, 472, W - 120, 44, 'How to play', () => go('how'), { size: 15 });
+    if (save.jackets > 0) text(`Life jackets: ${save.jackets}`, W / 2, 540, 13, C.soft, 'center', '600');
+  }
+
+  function star(x, y, r, on) {
+    ctx.fillStyle = on ? '#f2c45a' : 'rgba(255,255,255,0.16)';
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const a = -Math.PI / 2 + k * Math.PI / 5;
+      const rr = k % 2 ? r * 0.45 : r;
+      ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawLevels() {
+    backButton();
+    coinBadge(W - 16, 34);
+    text('Levels', W / 2, 34, 22, C.title);
+    text(`★ ${totalStars()} / ${LEVELS.length * 3}`, W / 2, 66, 14, C.warm, 'center', '700');
+    const cw = (W - 44) / 2, ch = 92;
+    LEVELS.forEach((L, i) => {
+      const x = 16 + (i % 2) * (cw + 12);
+      const y = 86 + Math.floor(i / 2) * (ch + 10);
+      const open = levelUnlocked(i);
+      const stars = save.stars[i] || 0;
+      ctx.fillStyle = open ? 'rgba(14,30,44,0.94)' : 'rgba(20,24,28,0.85)';
+      ctx.strokeStyle = stars ? 'rgba(242,196,90,0.6)' : open ? 'rgba(150,205,235,0.55)' : 'rgba(120,130,140,0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, y, cw, ch, 14); else ctx.rect(x, y, cw, ch);
+      ctx.fill(); ctx.stroke();
+      if (open) {
+        text(String(i + 1), x + 16, y + 26, 26, stars ? C.warm : '#fff', 'left', '800');
+        text(L.name, x + 16, y + 54, 13, C.soft, 'left', '700');
+        for (let k = 0; k < 3; k++) star(x + 24 + k * 22, y + 76, 8, k < stars);
+        buttons.push({ x, y, w: cw, h: ch, onTap: () => startGame('level', i) });
+      } else {
+        text(String(i + 1), x + 16, y + 26, 26, '#5d6870', 'left', '800');
+        text('Locked', x + 16, y + 54, 13, '#5d6870', 'left', '700');
+        // padlock
+        const lx = x + cw - 30, ly = y + 30;
+        ctx.strokeStyle = '#5d6870'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(lx, ly, 7, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = '#5d6870'; ctx.fillRect(lx - 10, ly, 20, 15);
+        buttons.push({ x, y, w: cw, h: ch, onTap: () => { sfx.nope(); toast(`Finish level ${i} to unlock`); } });
+      }
+    });
   }
 
   function drawHow() {
@@ -962,15 +1142,15 @@
       ['Fly the helicopter', 'Touch anywhere above the pad with another finger. Its spotlight shows the river.'],
       ['Remember the river', 'Lit spots stay visible for a moment, so scout ahead, then steer.'],
       ['The river splits', 'Pick a side. Rocks or a fallen log can block one way, so light it first.'],
-      ['Lanterns', '+10 points and 1 coin each. You also get 1 coin per 50 points.'],
-      ['Levels', 'Every level is darker and faster, with a narrower river and smaller light.'],
+      ['Levels', 'Reach the dock to finish. Lanterns give stars: half of them for 2 stars, all for 3.'],
+      ['Endless', 'It gets darker and faster until you crash. Coins: 1 per lantern and 1 per 50 points.'],
     ];
     let y = 142;
     for (const [head, body] of rows) {
       text(head, 40, y, 16, C.warm, 'left', '700');
       y = wrap(body, 40, y + 20, W - 80, 13, C.soft) + 28;
     }
-    button(70, 556, W - 140, 50, 'PLAY', startGame, { primary: true, size: 20 });
+    button(70, 556, W - 140, 50, 'PLAY', () => go('levels'), { primary: true, size: 20 });
   }
 
   function wrap(str, x, y, maxW, size, color) {
@@ -1041,7 +1221,7 @@
 
   function drawScores() {
     backButton();
-    text('High scores', W / 2, 34, 22, C.title);
+    text('Endless scores', W / 2, 34, 22, C.title);
     const tabW = (W - 48) / 2;
     button(16, 66, tabW, 36, 'This device', () => { state.scoresTab = 'device'; sfx.click(); },
       { size: 14, primary: state.scoresTab === 'device' });
@@ -1077,8 +1257,8 @@
         });
       }
     }
-    text(`Runs ${save.runs}  ·  Lanterns ${save.lanternsTotal}  ·  Best level ${save.bestLevel}`, W / 2, 560, 12, C.soft, 'center', '600');
-    button(70, 580, W - 140, 46, 'PLAY', startGame, { primary: true, size: 18 });
+    text(`Endless runs ${save.runs}  ·  Lanterns ${save.lanternsTotal}  ·  Stars ${totalStars()}`, W / 2, 560, 12, C.soft, 'center', '600');
+    button(70, 580, W - 140, 46, 'PLAY ENDLESS', () => startGame('endless'), { primary: true, size: 18 });
   }
 
   function rankRow(i, y, scoreStr, sub, highlight) {
@@ -1099,16 +1279,29 @@
   }
 
   function drawPlayHUD() {
-    text(String(score()), W / 2, 46, 40);
-    text(`Level ${state.level}`, 14, 30, 14, C.warm, 'left', '700');
+    if (state.mode === 'level') {
+      // Progress bar to the dock
+      const t = Math.min(1, state.distance / finishW());
+      const bx = 70, bw = W - 140;
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(bx, 40, bw, 6);
+      ctx.fillStyle = C.warm;
+      ctx.fillRect(bx, 40, bw * t, 6);
+      ctx.fillStyle = '#a0ffbe';
+      ctx.fillRect(bx + bw - 3, 34, 3, 18);
+      text(`Level ${state.levelIdx + 1}`, 14, 30, 14, C.warm, 'left', '700');
+    } else {
+      text(String(score()), W / 2, 46, 40);
+      text(`Stage ${state.level}`, 14, 30, 14, C.warm, 'left', '700');
+    }
     coin(W - 60, 30, 6);
     text(String(state.lanterns), W - 48, 31, 14, C.warm, 'left', '700');
     if (save.jackets > 0) text(`Life jackets ${save.jackets}`, W - 14, 56, 12, C.soft, 'right', '600');
     if (state.banner) {
       const a = Math.min(1, state.banner.age * 4, (2.4 - state.banner.age) * 2);
       ctx.globalAlpha = Math.max(0, a);
-      text(state.banner.text, W / 2, 150, 32, C.title);
-      text(state.banner.sub, W / 2, 186, 16, '#e6eef4', 'center', '600');
+      text(state.banner.text, W / 2, 150, state.banner.text.length > 18 ? 24 : 32, C.title);
+      wrapCenter(state.banner.sub, W / 2, 186, W - 60, 15, '#e6eef4');
       ctx.globalAlpha = 1;
     }
     // Pad
@@ -1132,10 +1325,41 @@
     }
   }
 
+  function wrapCenter(str, x, y, maxW, size, color) {
+    ctx.font = `600 ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    const lines = [];
+    let line = '';
+    for (const word of str.split(' ')) {
+      const t = line ? line + ' ' + word : word;
+      if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = word; } else line = t;
+    }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => text(l, x, y + i * (size + 6), size, color, 'center', '600'));
+  }
+
   function drawOver() {
+    if (state.mode === 'level') {
+      const L = LEVELS[state.levelIdx];
+      panel(30, 120, W - 60, 250);
+      text(state.reason, W / 2, 156, 22, C.bad);
+      text(`Level ${state.levelIdx + 1}: ${L.name}`, W / 2, 190, 15, C.soft, 'center', '600');
+      const t = Math.min(1, state.distance / finishW());
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(70, 226, W - 140, 8);
+      ctx.fillStyle = C.warm; ctx.fillRect(70, 226, (W - 140) * t, 8);
+      text(`${Math.round(t * 100)}% of the way`, W / 2, 254, 15, '#fff', 'center', '700');
+      coin(W / 2 - 52, 296);
+      text(`+${state.coinsEarned} coins`, W / 2 - 38, 297, 17, C.warm, 'left', '700');
+      text('Same river every time: you can learn it!', W / 2, 336, 12, C.soft, 'center', '500');
+      if (state.time - state.overAt > 0.6) {
+        button(50, 400, W - 100, 56, 'TRY AGAIN', () => startGame('level', state.levelIdx), { primary: true, size: 20 });
+        button(50, 468, (W - 112) / 2, 44, 'Levels', () => go('levels'), { size: 15 });
+        button(62 + (W - 112) / 2, 468, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
+      }
+      return;
+    }
     panel(30, 110, W - 60, 300);
     text(state.reason, W / 2, 146, 22, C.bad);
-    text(`Reached level ${state.level}`, W / 2, 178, 14, C.soft, 'center', '600');
+    text(`Reached stage ${state.level}`, W / 2, 178, 14, C.soft, 'center', '600');
     text('Score', W / 2 - 65, 212, 14, C.soft, 'center', '600');
     text('Best', W / 2 + 65, 212, 14, C.soft, 'center', '600');
     text(String(score()), W / 2 - 65, 246, 38);
@@ -1146,9 +1370,32 @@
     text(`${state.lanterns} lanterns · ${Math.floor(score() / 50)} from points`, W / 2, 360, 12, C.soft, 'center', '500');
     text(`You have ${save.coins} coins`, W / 2, 386, 13, C.soft, 'center', '600');
     if (state.time - state.overAt > 0.6) {
-      button(50, 432, W - 100, 56, 'PLAY AGAIN', startGame, { primary: true, size: 20 });
+      button(50, 432, W - 100, 56, 'PLAY AGAIN', () => startGame('endless'), { primary: true, size: 20 });
       button(50, 500, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
       button(62 + (W - 112) / 2, 500, (W - 112) / 2, 44, 'Menu', () => go('menu'), { size: 15 });
+    }
+  }
+
+  function drawWin() {
+    const i = state.levelIdx;
+    panel(30, 100, W - 60, 300);
+    text('Level complete!', W / 2, 140, 28, C.good);
+    text(`${i + 1}. ${LEVELS[i].name}`, W / 2, 174, 15, C.soft, 'center', '600');
+    const shown = Math.min(state.levelStars, Math.floor((state.time - state.overAt) / 0.3) + 1);
+    for (let k = 0; k < 3; k++) star(W / 2 - 52 + k * 52, 226, k === 1 ? 24 : 20, k < shown);
+    text(`Lanterns ${state.lanterns} / ${state.lanternTotal}`, W / 2, 274, 15, '#fff', 'center', '700');
+    coin(W / 2 - 52, 310);
+    text(`+${state.coinsEarned} coins`, W / 2 - 38, 311, 17, C.warm, 'left', '700');
+    if (state.firstClear) text(`includes first-time bonus +${10 + 5 * (i + 1)}`, W / 2, 338, 12, C.soft, 'center', '500');
+    if (state.levelStars < 3) text('Get every lantern for 3 stars', W / 2, 368, 12, C.dim, 'center', '500');
+    if (state.time - state.overAt > 0.6) {
+      if (i + 1 < LEVELS.length) {
+        button(50, 420, W - 100, 56, 'NEXT LEVEL', () => startGame('level', i + 1), { primary: true, size: 20 });
+      } else {
+        text('You beat every level!', W / 2, 440, 18, C.warm, 'center', '700');
+      }
+      button(50, 488, (W - 112) / 2, 44, 'Replay', () => startGame('level', i), { size: 15 });
+      button(62 + (W - 112) / 2, 488, (W - 112) / 2, 44, 'Levels', () => go('levels'), { size: 15 });
     }
   }
 
@@ -1159,10 +1406,11 @@
     drawLand();
     drawRiver();
     drawScenery();
-    const showBoat = playing() || state.screen === 'over' || state.screen === 'menu';
+    const showBoat = playing() || state.screen === 'over' || state.screen === 'win' || state.screen === 'menu';
     if (showBoat) drawBoat(state.boatX, BOAT_Y, playing() ? state.boatTilt : 0, playing() ? state.edge : 0);
     drawDarkness();
     if (playing()) drawLanterns();
+    drawFinishLights();
     drawHelicopter();
     if (playing() && state.edge > 0 && state.invuln <= 0) {
       ctx.fillStyle = `rgba(255,50,40,${0.15 * state.edge})`;
@@ -1170,7 +1418,7 @@
     }
     ctx.restore();
 
-    if (!playing() && state.screen !== 'over') {
+    if (!playing() && state.screen !== 'over' && state.screen !== 'win') {
       ctx.fillStyle = 'rgba(2,4,12,0.35)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -1181,6 +1429,8 @@
       case 'scores': drawScores(); break;
       case 'play': drawPlayHUD(); break;
       case 'over': drawOver(); break;
+      case 'win': drawWin(); break;
+      case 'levels': drawLevels(); break;
     }
     if (state.toast) {
       ctx.globalAlpha = Math.min(1, (2 - state.toast.age) * 3);
