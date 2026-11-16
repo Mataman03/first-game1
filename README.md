@@ -1,6 +1,6 @@
 # Night Watch
 
-Steer a boat down a river at night while a helicopter lights the way.
+Steer a boat down a river at night while a helicopter lights the way. Every run starts at a lit harbour, then it's real darkness: the chopper's spotlight is how you see.
 
 - **Thumb on the bottom pad is a joystick.** Left and right steer; push it forward to go faster (there's no brake). Let go and the boat keeps going straight at normal speed.
 - **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger. Spots you lit stay faintly visible for a moment, so scout ahead and remember the way.
@@ -12,6 +12,7 @@ Steer a boat down a river at night while a helicopter lights the way.
 ### Two ways to play
 
 - **Levels:** 10 levels, each with its own river (the same layout every time, so you can learn it) and a dock at the end. Lanterns earn stars: finish for 1, collect half the lanterns for 2, all of them for 3. Finishing a level unlocks the next one.
+  Levels 1 and 2 have street lamps along a riverside road that light patches of the river, then stop, to teach you to use the chopper.
   1. First Light · 2. Gentle Bends · 3. The Split · 4. Blocked Way · 5. The Narrows · 6. Moonless Night · 7. Fast Water · 8. Island Maze · 9. Fading Memory · 10. Night Run
 - **Endless:** the river never ends. Every stage is darker and faster, with a narrower river. This mode has the high scores and leaderboard.
 

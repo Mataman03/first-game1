@@ -52,7 +52,7 @@
       speed: 95 + n * 20,
       lightR: Math.max(60, 105 - n * 5),
       memory: Math.max(0.45, 1.8 - n * 0.16),
-      ambient: Math.min(0.985, 0.9 + n * 0.012),
+      ambient: Math.min(0.988, 0.955 + n * 0.004),
     });
   }
   function withUpgrades(p) {
@@ -62,28 +62,28 @@
 
   // The 10 levels. Each has a fixed river (seed), a finish line (length) and its own night.
   const LEVELS = [
-    { name: 'First Light', tip: 'A wide, calm river. Learn to steer and light the way.', length: 2200, speed: 85, lightR: 125, memory: 2.4, ambient: 0.84,
+    { name: 'First Light', tip: 'Street lamps light the river. Where they stop, use the chopper!', road: { side: 1, every: 170, until: 1300 }, length: 2200, speed: 85, lightR: 125, memory: 2.4, ambient: 0.955,
       world: { startWidth: 175, minWidth: 150, narrowRate: 0.01, turn: 1.1, forks: false } },
-    { name: 'Gentle Bends', tip: 'The river starts to wind. Look ahead before each bend.', length: 2600, speed: 95, lightR: 115, memory: 2.1, ambient: 0.87,
+    { name: 'Gentle Bends', tip: 'Only a few lamps tonight. Light the bends with the chopper.', road: { side: -1, every: 360, until: 1500 }, length: 2600, speed: 95, lightR: 115, memory: 2.1, ambient: 0.96,
       world: { startWidth: 165, minWidth: 125, narrowRate: 0.012, turn: 2.2, forks: false } },
-    { name: 'The Split', tip: 'The river splits around islands. Both ways are open. Pick one!', length: 3000, speed: 100, lightR: 110, memory: 2, ambient: 0.89,
+    { name: 'The Split', tip: 'The river splits around islands. Both ways are open. Pick one!', length: 3000, speed: 100, lightR: 110, memory: 2, ambient: 0.962,
       world: { startWidth: 155, minWidth: 120, narrowRate: 0.01, turn: 2, forks: true, firstFork: 600, forkGap: [350, 600], forkLen: [500, 620], blockChance: 0 } },
-    { name: 'Blocked Way', tip: 'Now one side of every split is blocked. Light it before you choose.', length: 3300, speed: 105, lightR: 108, memory: 1.9, ambient: 0.9,
+    { name: 'Blocked Way', tip: 'Now one side of every split is blocked. Light it before you choose.', length: 3300, speed: 105, lightR: 108, memory: 1.9, ambient: 0.965,
       world: { startWidth: 150, minWidth: 115, narrowRate: 0.01, turn: 2, forks: true, firstFork: 600, forkGap: [350, 600], forkLen: [500, 620], blockChance: 1 } },
-    { name: 'The Narrows', tip: 'The river gets very thin. Small, careful moves.', length: 3400, speed: 105, lightR: 105, memory: 1.8, ambient: 0.9,
+    { name: 'The Narrows', tip: 'The river gets very thin. Small, careful moves.', length: 3400, speed: 105, lightR: 105, memory: 1.8, ambient: 0.965,
       world: { startWidth: 140, minWidth: 68, narrowRate: 0.03, turn: 2.4, forks: true, firstFork: 1600, forkGap: [1200, 1500], blockChance: 0.6 } },
-    { name: 'Moonless Night', tip: 'Very dark, and your light is small. Keep scouting.', length: 3400, speed: 110, lightR: 88, memory: 1.4, ambient: 0.97,
+    { name: 'Moonless Night', tip: 'Very dark, and your light is small. Keep scouting.', length: 3400, speed: 110, lightR: 88, memory: 1.4, ambient: 0.988,
       world: { startWidth: 145, minWidth: 105, narrowRate: 0.012, turn: 2.6, forks: true, firstFork: 1000, forkGap: [900, 1200], blockChance: 0.7 } },
-    { name: 'Fast Water', tip: 'The current is strong. Light far ahead!', length: 3900, speed: 150, lightR: 105, memory: 1.6, ambient: 0.92,
+    { name: 'Fast Water', tip: 'The current is strong. Light far ahead!', length: 3900, speed: 150, lightR: 105, memory: 1.6, ambient: 0.968,
       world: { startWidth: 145, minWidth: 100, narrowRate: 0.01, turn: 2.6, forks: true, firstFork: 1200, forkGap: [1000, 1300], blockChance: 0.7 } },
-    { name: 'Island Maze', tip: 'Split after split after split.', length: 4100, speed: 120, lightR: 100, memory: 1.6, ambient: 0.93,
+    { name: 'Island Maze', tip: 'Split after split after split.', length: 4100, speed: 120, lightR: 100, memory: 1.6, ambient: 0.972,
       world: { startWidth: 150, minWidth: 110, narrowRate: 0.008, turn: 2.2, forks: true, firstFork: 450, forkGap: [150, 300], forkLen: [460, 540], blockChance: 0.85 } },
-    { name: 'Fading Memory', tip: 'Lit water goes dark again almost at once.', length: 4100, speed: 125, lightR: 92, memory: 0.6, ambient: 0.95,
+    { name: 'Fading Memory', tip: 'Lit water goes dark again almost at once.', length: 4100, speed: 125, lightR: 92, memory: 0.6, ambient: 0.975,
       world: { startWidth: 140, minWidth: 90, narrowRate: 0.012, turn: 2.8, forks: true, firstFork: 700, forkGap: [600, 900], blockChance: 0.8 } },
-    { name: 'Night Run', tip: 'Everything at once. Good luck, captain.', length: 5200, speed: 145, lightR: 82, memory: 0.75, ambient: 0.975,
+    { name: 'Night Run', tip: 'Everything at once. Good luck, captain.', length: 5200, speed: 145, lightR: 82, memory: 0.75, ambient: 0.985,
       world: { startWidth: 130, minWidth: 66, narrowRate: 0.014, turn: 3.2, forks: true, firstFork: 700, forkGap: [400, 600], forkLen: [520, 640], blockChance: 0.85 } },
   ];
-  const levelWorld = (L) => ({ turnGrow: 0, firstFork: 1e9, forkGap: [1000, 1000], blockChance: 0, ...L.world });
+  const levelWorld = (L) => ({ turnGrow: 0, firstFork: 1e9, forkGap: [1000, 1000], blockChance: 0, ...L.world, road: L.road || null });
 
   // ---------- Shop catalogue ----------
   const UPGRADES = [
@@ -284,7 +284,9 @@
       if (river.pts.length % 3 === 0) {
         for (const side of [-1, 1]) {
           if (rng() < 0.55) {
-            const x = river.x + side * (width / 2 + 16 + rng() * 120);
+            const gap = 16 + rng() * 120;
+            if (world.road && side === world.road.side && w < world.road.until + 200 && gap < 64) continue;
+            const x = river.x + side * (width / 2 + gap);
             if (x > -30 && x < W + 30) {
               const r = rng();
               scenery.push({
@@ -827,6 +829,7 @@
     }
 
     drawFinish();
+    drawRoadAndHarbor();
 
     ctx.strokeStyle = '#4f6a33';
     ctx.lineWidth = 1.5;
@@ -861,6 +864,77 @@
       ctx.fillRect(x0 + k * 14, y - 14, 14, 5);
     }
   }
+  // Fixed lights in the world: the harbour you start from, and street lamps on levels that have a road
+  const HARBOR = [{ w: 30, side: -1 }, { w: 30, side: 1 }, { w: 170, side: -1 }, { w: 170, side: 1 }];
+  function worldLights() {
+    const out = [];
+    const lo = toWorld(H + 120), hi = toWorld(-120);
+    for (const l of HARBOR) {
+      if (l.w < lo || l.w > hi) continue;
+      const p = riverAt(l.w);
+      out.push({ x: p.x + l.side * (p.width / 2 - 26), y: toScreenY(l.w), r: 95 });
+    }
+    const road = world.road;
+    if (road) {
+      for (let w = 260; w <= road.until; w += road.every) {
+        if (w < lo || w > hi) continue;
+        const p = riverAt(w);
+        out.push({ x: p.x + road.side * (p.width / 2 + 16), y: toScreenY(w), r: 88, post: true });
+      }
+    }
+    return out;
+  }
+
+  function drawRoadAndHarbor() {
+    const road = world.road;
+    if (road) {
+      // asphalt strip along one bank, with a dashed centre line
+      const i0 = pointIndex(wBottom()), i1 = Math.min(pointIndex(wTop()), pointIndex(road.until + 260));
+      if (i1 > i0) {
+        const edge = (i, k) => { const q = river.pts[i]; return q.x + road.side * (q.width / 2 + k); };
+        ctx.fillStyle = '#3a3a3c';
+        ctx.beginPath();
+        for (let i = i0; i <= i1; i++) { const y = toScreenY(i * STEP); i === i0 ? ctx.moveTo(edge(i, 20), y) : ctx.lineTo(edge(i, 20), y); }
+        for (let i = i1; i >= i0; i--) ctx.lineTo(edge(i, 60), toScreenY(i * STEP));
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(240,220,150,0.55)'; ctx.lineWidth = 2;
+        ctx.setLineDash([10, 12]); ctx.lineDashOffset = state.distance;
+        ctx.beginPath();
+        for (let i = i0; i <= i1; i++) { const y = toScreenY(i * STEP); i === i0 ? ctx.moveTo(edge(i, 40), y) : ctx.lineTo(edge(i, 40), y); }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    // harbour piers sticking out from both banks
+    for (const l of HARBOR) {
+      const y = toScreenY(l.w);
+      if (y < -40 || y > H + 40) continue;
+      const p = riverAt(l.w);
+      const bank = p.x + l.side * (p.width / 2 + 8);
+      const tip = p.x + l.side * (p.width / 2 - 34);
+      const a = Math.min(bank, tip), b = Math.max(bank, tip);
+      ctx.fillStyle = '#4e3520';
+      ctx.fillRect(a, y - 9, b - a, 18);
+      ctx.fillStyle = '#6b4a2c';
+      for (let x = a; x < b - 4; x += 8) ctx.fillRect(x + 1, y - 8, 6, 16);
+      ctx.fillStyle = '#2a1c10';
+      ctx.fillRect(a, y + 8, 4, 4); ctx.fillRect(b - 4, y + 8, 4, 4);
+    }
+  }
+
+  function drawWorldLights() {
+    if (!(playing() || state.screen === 'paused')) return;
+    for (const L of worldLights()) {
+      const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, L.r);
+      g.addColorStop(0, 'rgba(255,205,130,0.22)');
+      g.addColorStop(1, 'rgba(255,190,110,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(L.x, L.y, L.r, 0, Math.PI * 2); ctx.fill();
+      if (L.post) { ctx.fillStyle = '#1d1d1f'; ctx.fillRect(L.x - 1.5, L.y - 2, 3, 12); }
+      ctx.fillStyle = '#fff1c9';
+      ctx.beginPath(); ctx.arc(L.x, L.y - 3, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   function drawFinishLights() {
     if (state.mode !== 'level' || !playing()) return;
     const fw = finishW();
@@ -999,6 +1073,11 @@
       for (const m of state.marks) {
         const a = 1 - (state.time - m.t) / mem;
         hole(m.x, toScreenY(m.w), m.r * 0.9, 0.12 * a);
+      }
+      for (const L of worldLights()) hole(L.x, L.y, L.r, 0.9);
+      if (state.mode === 'level') {
+        const fy = toScreenY(finishW());
+        if (fy > -80 && fy < H + 80) { const fp = riverAt(finishW()); for (const sd of [-1, 1]) hole(fp.x + sd * (fp.width / 2 + 14), fy - 16, 70, 0.8); }
       }
       hole(state.boatX, BOAT_Y - 10, state.params.lampR, 0.8);
       if (spotTarget()) hole(state.heli.x, state.heli.y, state.params.lightR, 1);
@@ -1708,6 +1787,7 @@
     drawDarkness();
     if (playing() || state.screen === 'paused') drawLanterns();
     drawFinishLights();
+    drawWorldLights();
     drawHelicopter();
     if (playing() && state.edge > 0 && state.invuln <= 0) {
       ctx.fillStyle = `rgba(255,50,40,${0.15 * state.edge})`;
