@@ -13,7 +13,14 @@
   const HELI_OFFSET = 70;    // the helicopter flies this far above your finger
   const STEP = 8;            // world px between river points
 
-  const STEER_GAIN = 1.25;
+  // Joystick on the steering pad
+  const JOY_R = 46;          // how far the knob can move
+  const STEER_SPEED = 240;   // px/s sideways at full tilt
+  const BOOST = 0.8;         // pushing forward adds up to +80% speed (there is no brake)
+  // Fonts: a stencil face for titles, a condensed face for everything else
+  const UI_FONT = '"Barlow Condensed", "Arial Narrow", system-ui, sans-serif';
+  const TITLE_FONT = '"Black Ops One", "Barlow Condensed", Impact, system-ui, sans-serif';
+  try { document.fonts && ['600 16px "Barlow Condensed"', '700 16px "Barlow Condensed"', '16px "Black Ops One"'].forEach((f) => document.fonts.load(f)); } catch { /* ignore */ }
   const LANTERN_EVERY = 360;
   const LANTERN_BONUS = 10;
   const ISLAND_MAX = 46;     // half-width of the island when the river splits
@@ -333,7 +340,8 @@
     distance: 0, speed: 95, level: 1, params: null,
     bonus: 0, lanterns: 0, newBest: false, coinsEarned: 0, jacketsUsed: 0,
     boatX: W / 2, boatTilt: 0, invuln: 0,
-    steerId: null, steerLastX: 0,
+    steerId: null, joy: null, // joy: { ox, oy, kx, ky } origin and knob offset
+    boost: 0,
     lightId: null, finger: null,
     heli: { x: W / 2 + 60, y: 120 },
     marks: [], foam: [], lanternsList: [], nextLanternW: LANTERN_EVERY, popups: [],
@@ -373,7 +381,7 @@
     Object.assign(state, {
       screen: 'play', distance: 0, level: 1, params: p, speed: p.speed,
       bonus: 0, lanterns: 0, lanternTotal: 0, newBest: false, coinsEarned: 0, jacketsUsed: 0,
-      boatX: W / 2, boatTilt: 0, invuln: 0, marks: [], foam: [],
+      boatX: W / 2, boatTilt: 0, invuln: 0, marks: [], foam: [], boost: 0,
       lanternsList: [], nextLanternW: LANTERN_EVERY, popups: [], edge: 0, reason: '', playTime: 0,
       banner, levelStars: 0, firstClear: false,
     });
@@ -448,25 +456,6 @@
 
   // ---------- Buttons (menus are drawn on the canvas) ----------
   let buttons = [];
-  function button(x, y, w, h, label, onTap, opts = {}) {
-    buttons.push({ x, y, w, h, onTap, disabled: opts.disabled });
-    const primary = opts.primary;
-    ctx.save();
-    ctx.fillStyle = opts.disabled ? 'rgba(60,70,80,0.6)' : primary ? '#f2c45a' : 'rgba(18,34,48,0.92)';
-    ctx.strokeStyle = opts.disabled ? 'rgba(120,130,140,0.4)' : primary ? '#ffe39a' : 'rgba(150,205,235,0.5)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 12); else ctx.rect(x, y, w, h);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-    ctx.font = `${opts.weight || 800} ${opts.size || 18}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = opts.disabled ? '#9aa3ab' : primary ? '#2a1d05' : '#e6f1f8';
-    ctx.fillText(label, x + w / 2, y + h / 2 + 1);
-  }
-
   function go(screen) {
     state.screen = screen;
     sfx.click();
@@ -523,7 +512,12 @@
     const isSteer = !hasTouch || e.pointerType === 'mouse' || p.y >= PAD_TOP;
     if (isSteer && state.steerId === null) {
       state.steerId = e.pointerId;
-      state.steerLastX = p.x;
+      // The joystick appears under your thumb
+      const onPad = hasTouch && e.pointerType !== 'mouse';
+      state.joy = onPad
+        ? { ox: Math.max(JOY_R + 8, Math.min(W - JOY_R - 8, p.x)), oy: Math.max(PAD_TOP + JOY_R - 10, Math.min(H - 30, p.y)), kx: 0, ky: 0 }
+        : { ox: p.x, oy: p.y, kx: 0, ky: 0 }; // mouse: the joystick sits where you clicked
+      setKnob(p);
     } else if (!isSteer && state.lightId === null) {
       state.lightId = e.pointerId;
       state.finger = p;
@@ -531,22 +525,26 @@
     }
   }
 
+  function setKnob(p) {
+    const j = state.joy;
+    if (!j) return;
+    let dx = p.x - j.ox, dy = p.y - j.oy;
+    const d = Math.hypot(dx, dy);
+    if (d > JOY_R) { dx *= JOY_R / d; dy *= JOY_R / d; }
+    j.kx = dx; j.ky = dy;
+  }
+
   function onMove(e) {
     const p = toGame(e);
     if (e.pointerId === state.steerId) {
-      if (playing()) {
-        const dx = (p.x - state.steerLastX) * STEER_GAIN;
-        state.boatX = Math.max(8, Math.min(W - 8, state.boatX + dx));
-        state.boatTilt = Math.max(-0.5, Math.min(0.5, state.boatTilt + dx * 0.02));
-      }
-      state.steerLastX = p.x;
+      setKnob(p);
     } else if (e.pointerId === state.lightId) {
       state.finger = p;
     }
   }
 
   function onUp(e) {
-    if (e.pointerId === state.steerId) state.steerId = null; // the boat keeps going straight
+    if (e.pointerId === state.steerId) { state.steerId = null; state.joy = null; } // the boat keeps going straight
     if (e.pointerId === state.lightId) { state.lightId = null; state.finger = null; }
   }
 
@@ -562,7 +560,9 @@
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
+  const menuSweep = () => !playing() && state.screen !== 'over' && state.screen !== 'win';
   function spotTarget() {
+    if (menuSweep()) return { x: W / 2 + Math.sin(state.time * 0.55) * 120, y: 330 + Math.sin(state.time * 0.9) * 150 };
     if (state.finger) return { x: state.finger.x, y: Math.max(20, state.finger.y - HELI_OFFSET) };
     if (!hasTouch && playing()) return { x: state.boatX, y: BOAT_Y - 140 };
     return null;
@@ -594,14 +594,23 @@
         vibrate(40);
       }
       state.speed += (state.params.speed - state.speed) * Math.min(1, dt * 0.8);
-      state.distance += state.speed * dt;
+      // Joystick: sideways steers, forward boosts. Pulling back does nothing (no brake).
+      let steer = 0, push = 0;
+      if (state.joy) {
+        steer = state.joy.kx / JOY_R;
+        push = Math.max(0, -state.joy.ky / JOY_R);
+        if (Math.abs(steer) < 0.08) steer = 0;
+      }
+      if (keys.ArrowLeft || keys.KeyA) steer = -1;
+      if (keys.ArrowRight || keys.KeyD) steer = 1;
+      if (keys.ArrowUp || keys.KeyW) push = 1;
+      state.boatX += steer * STEER_SPEED * dt;
+      state.boatTilt += (steer * 0.45 - state.boatTilt) * Math.min(1, dt * 8);
+      state.boost += (push - state.boost) * Math.min(1, dt * 5);
+      state.distance += state.speed * (1 + BOOST * state.boost) * dt;
       if (state.distance >= finishW()) { winLevel(); return; }
 
-      if (keys.ArrowLeft || keys.KeyA) { state.boatX -= 200 * dt; state.boatTilt -= 2 * dt; }
-      if (keys.ArrowRight || keys.KeyD) { state.boatX += 200 * dt; state.boatTilt += 2 * dt; }
       state.boatX = Math.max(8, Math.min(W - 8, state.boatX));
-      state.boatTilt *= Math.pow(0.02, dt);
-      state.boatTilt = Math.max(-0.5, Math.min(0.5, state.boatTilt));
 
       // In the water? (outer banks and, when the river splits, the island)
       const p = riverAt(state.distance);
@@ -634,7 +643,7 @@
       }
       state.marks = state.marks.filter((m) => state.time - m.t < state.params.memory);
 
-      if (Math.random() < dt * 40) {
+      if (Math.random() < dt * (40 + 60 * state.boost)) {
         state.foam.push({ x: state.boatX + (Math.random() - 0.5) * 8, w: state.distance - 16, age: 0, life: 0.9 + Math.random() * 0.5, side: Math.random() < 0.5 ? -1 : 1 });
       }
 
@@ -932,7 +941,7 @@
   }
 
   function drawHelicopter() {
-    const target = playing() ? spotTarget() : null;
+    const target = playing() || menuSweep() ? spotTarget() : null;
     if (!target) return;
     const { x, y } = state.heli;
     ctx.save();
@@ -964,7 +973,7 @@
   }
 
   function drawDarkness() {
-    const amb = playing() ? state.params.ambient : 0.55;
+    const amb = playing() ? state.params.ambient : menuSweep() ? 0.8 : 0.55;
     dctx.globalCompositeOperation = 'source-over';
     dctx.clearRect(0, 0, W, H);
     dctx.fillStyle = `rgba(2,4,12,${amb})`;
@@ -987,6 +996,8 @@
       }
       hole(state.boatX, BOAT_Y - 10, state.params.lampR, 0.8);
       if (spotTarget()) hole(state.heli.x, state.heli.y, state.params.lightR, 1);
+    } else if (menuSweep()) {
+      hole(state.heli.x, state.heli.y, 115, 1);
     }
     dctx.globalCompositeOperation = 'source-over';
     ctx.save();
@@ -994,8 +1005,8 @@
     ctx.drawImage(dark, 0, 0);
     ctx.restore();
 
-    if (playing() && spotTarget()) {
-      const r = state.params.lightR;
+    if ((playing() || menuSweep()) && spotTarget()) {
+      const r = playing() ? state.params.lightR : 115;
       const { x, y } = state.heli;
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, 'rgba(225,240,255,0.16)');
@@ -1022,27 +1033,156 @@
   }
 
   // ---------- Draw: UI ----------
-  const C = { title: '#cfe8f5', warm: '#ffd98a', soft: '#a9bccb', dim: '#7f95a5', bad: '#ff9b7a', good: '#9fe0c0' };
+  const C = { title: '#efe2bf', warm: '#ffc95c', soft: '#c3b394', dim: '#8a7c63', bad: '#ff8e66', good: '#b6e38a' };
 
-  function text(str, x, y, size, color = '#fff', align = 'center', weight = '800') {
-    ctx.font = `${weight} ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  // Condensed face runs narrow, so UI text is drawn a touch larger than the size asked for
+  function text(str, x, y, size, color = '#fff', align = 'center', weight = '800', font = UI_FONT) {
+    const w = Number(weight) >= 700 ? 700 : 600;
+    const px = font === UI_FONT ? Math.round(size * 1.12) : size;
+    ctx.font = font === UI_FONT ? `${w} ${px}px ${font}` : `${px}px ${font}`;
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
-    ctx.lineWidth = Math.max(3, size / 7);
-    ctx.strokeStyle = 'rgba(2,4,12,0.85)';
+    ctx.lineWidth = Math.max(3, px / 7);
+    ctx.strokeStyle = 'rgba(8,6,4,0.85)';
+    ctx.lineJoin = 'round';
     ctx.strokeText(str, x, y);
     ctx.fillStyle = color;
     ctx.fillText(str, x, y);
   }
+  function title(str, x, y, size, color = C.title, align = 'center') {
+    text(str, x, y, size, color, align, '400', TITLE_FONT);
+  }
 
-  function panel(x, y, w, h) {
-    ctx.fillStyle = 'rgba(8,16,24,0.92)';
-    ctx.strokeStyle = 'rgba(150,205,235,0.45)';
-    ctx.lineWidth = 2;
+  // A deterministic wobble so planks keep the same grain every frame
+  const grain = (n) => { const v = Math.sin(n * 127.1) * 43758.5453; return v - Math.floor(v); };
+
+  // A nailed wooden plank, drawn centred on (cx, cy)
+  function plankShape(cx, cy, w, h, rot, kind, seed) {
+    const tones = {
+      wood: ['#7a5636', '#5c3f26', '#3d2a19'],
+      paint: ['#e3912f', '#c4721b', '#7c4610'],
+      dead: ['#4b4641', '#3a3632', '#26231f'],
+      dark: ['#3a2a1c', '#2b1f15', '#1a120b'],
+    }[kind];
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(-w / 2 + 3, -h / 2 + 5, w, h);
+    const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    g.addColorStop(0, tones[0]);
+    g.addColorStop(1, tones[1]);
+    ctx.fillStyle = g;
+    // slightly uneven ends, like cut boards
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, h, 16); else ctx.rect(x, y, w, h);
+    ctx.moveTo(-w / 2, -h / 2 + 2 * grain(seed));
+    ctx.lineTo(w / 2 - 3 * grain(seed + 1), -h / 2);
+    ctx.lineTo(w / 2, h / 2 - 2 * grain(seed + 2));
+    ctx.lineTo(-w / 2 + 3 * grain(seed + 3), h / 2);
+    ctx.closePath();
     ctx.fill();
-    ctx.stroke();
+    // grain lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 4; k++) {
+      const yy = -h / 2 + h * (0.2 + 0.2 * k) + grain(seed + k * 7) * 4 - 2;
+      ctx.beginPath();
+      ctx.moveTo(-w / 2 + 4, yy);
+      ctx.bezierCurveTo(-w / 6, yy + 3 * grain(seed + k), w / 6, yy - 3 * grain(seed + k + 9), w / 2 - 4, yy);
+      ctx.stroke();
+    }
+    if (kind === 'paint') {
+      // worn spots where the paint has chipped
+      ctx.fillStyle = 'rgba(110,70,30,0.35)';
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        ctx.ellipse(-w / 2 + 16 + (w - 32) * grain(seed + k * 3), -h / 2 + 4 + (h - 8) * grain(seed + k * 5), 2 + 3 * grain(seed + k), 1 + 1.5 * grain(seed + k + 2), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(-w / 2 + 2, -h / 2 + 1, w - 4, 2);
+    // nails
+    for (const nx of [-w / 2 + 11, w / 2 - 11]) {
+      ctx.fillStyle = tones[2];
+      ctx.beginPath(); ctx.arc(nx, 0, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.arc(nx - 1, -1, 1.1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Buttons are planks. opts: primary, disabled, size, rot, sub (small text on the right), align
+  function button(x, y, w, h, label, onTap, opts = {}) {
+    buttons.push({ x, y, w, h, onTap, disabled: opts.disabled });
+    const kind = opts.disabled ? 'dead' : opts.primary ? 'paint' : 'wood';
+    const rot = opts.rot || 0;
+    plankShape(x + w / 2, y + h / 2, w, h, rot, kind, x * 0.13 + y * 0.07);
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(rot);
+    const ink = opts.disabled ? '#8d877f' : opts.primary ? '#2b1706' : '#f1e3c2';
+    const size = opts.size || 18;
+    ctx.fillStyle = ink;
+    ctx.textBaseline = 'middle';
+    if (opts.title) {
+      ctx.font = `${size}px ${TITLE_FONT}`;
+    } else {
+      ctx.font = `700 ${Math.round(size * 1.12)}px ${UI_FONT}`;
+    }
+    try { ctx.letterSpacing = opts.title ? '1px' : '0.5px'; } catch { /* older browsers */ }
+    const left = opts.align === 'left';
+    if (opts.coin) {
+      const tw = ctx.measureText(label).width;
+      ctx.restore(); ctx.save();
+      ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot);
+      coin(-tw / 2 - 6, 0, 7);
+      ctx.fillStyle = ink;
+      ctx.font = `700 ${Math.round(size * 1.12)}px ${UI_FONT}`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, 8, 1);
+    } else {
+      ctx.textAlign = left ? 'left' : 'center';
+      ctx.fillText(label, left ? -w / 2 + 24 : 0, 1);
+    }
+    if (opts.sub) {
+      ctx.font = `600 ${Math.round(size * 0.62)}px ${UI_FONT}`;
+      ctx.textAlign = 'right';
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(opts.sub, w / 2 - 24, 2);
+    }
+    try { ctx.letterSpacing = '0px'; } catch { /* ignore */ }
+    ctx.restore();
+  }
+
+  // Panels are dark boards: planks laid side by side, with nails at the corners
+  function panel(x, y, w, h) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x + 4, y + 6, w, h);
+    const g = ctx.createLinearGradient(x, y, x + w, y + h);
+    g.addColorStop(0, '#2a1f16');
+    g.addColorStop(1, '#1d1610');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 1.5;
+    for (let yy = y + 44; yy < y + h - 6; yy += 44) {
+      ctx.beginPath(); ctx.moveTo(x + 2, yy); ctx.lineTo(x + w - 2, yy); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,230,190,0.05)';
+    for (let yy = y + 46; yy < y + h - 6; yy += 44) {
+      ctx.beginPath(); ctx.moveTo(x + 2, yy); ctx.lineTo(x + w - 2, yy); ctx.stroke();
+    }
+    ctx.strokeStyle = '#4a3624';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+    for (const [nx, ny] of [[x + 10, y + 10], [x + w - 10, y + 10], [x + 10, y + h - 10], [x + w - 10, y + h - 10]]) {
+      ctx.fillStyle = '#120c07';
+      ctx.beginPath(); ctx.arc(nx, ny, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath(); ctx.arc(nx - 1, ny - 1, 1, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   function coin(x, y, r = 7) {
@@ -1054,36 +1194,67 @@
 
   function coinBadge(x, y) {
     const label = String(save.coins);
-    ctx.font = '800 16px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.font = `700 17px ${UI_FONT}`;
     const w = ctx.measureText(label).width + 38;
-    ctx.fillStyle = 'rgba(8,16,24,0.9)';
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x - w, y - 14, w, 28, 14); else ctx.rect(x - w, y - 14, w, 28);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x - w + 2, y - 12, w, 28);
+    ctx.fillStyle = '#2a1f16';
+    ctx.fillRect(x - w, y - 14, w, 28);
+    ctx.strokeStyle = '#4a3624'; ctx.lineWidth = 2;
+    ctx.strokeRect(x - w + 1, y - 13, w - 2, 26);
     coin(x - w + 16, y);
     text(label, x - 10, y + 1, 16, C.warm, 'right');
   }
 
-  function backButton() {
-    button(16, 16, 84, 36, '‹ Back', () => go('menu'), { size: 15 });
+  function backButton(to = 'menu') {
+    button(14, 16, 86, 38, '‹ BACK', () => go(to), { size: 15, rot: -0.03 });
   }
 
   function totalStars() { return save.stars.reduce((a, b) => a + (b || 0), 0); }
 
+  // Main menu: a signpost on the riverbank, lit by a hanging lantern,
+  // while the patrol helicopter sweeps its searchlight over the water behind.
   function drawMenu() {
     coinBadge(W - 16, 34);
-    text('NIGHT', W / 2, 112, 52, C.title);
-    text('WATCH', W / 2, 162, 52, C.warm);
-    text('River patrol after dark', W / 2, 200, 15, C.soft, 'center', '600');
-    button(60, 236, W - 120, 62, 'LEVELS', () => go('levels'), { primary: true, size: 24 });
-    text(`★ ${totalStars()} / ${LEVELS.length * 3}`, W / 2, 312, 14, C.warm, 'center', '700');
-    button(60, 330, W - 120, 52, 'ENDLESS', () => startGame('endless'), { size: 20 });
-    text(save.best > 0 ? `High score ${save.best}` : 'Go as far as you can', W / 2, 396, 13, C.soft, 'center', '600');
-    const half = (W - 132) / 2;
-    button(60, 418, half, 44, 'Shop', () => go('shop'), { size: 15 });
-    button(72 + half, 418, half, 44, 'High scores', () => go('scores'), { size: 15 });
-    button(60, 472, W - 120, 44, 'How to play', () => go('how'), { size: 15 });
-    if (save.jackets > 0) text(`Life jackets: ${save.jackets}`, W / 2, 540, 13, C.soft, 'center', '600');
+    text('RIVER PATROL  ·  SECTOR 7', 28, 60, 12, C.soft, 'left', '700');
+    title('NIGHT', 24, 108, 62, '#efe2bf', 'left');
+    title('WATCH', 24, 168, 62, '#ffc95c', 'left');
+
+    // the post the signs are nailed to
+    const px = 46;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(px + 4, 214, 18, 420);
+    const pg = ctx.createLinearGradient(px, 0, px + 18, 0);
+    pg.addColorStop(0, '#4a3220'); pg.addColorStop(1, '#2c1d12');
+    ctx.fillStyle = pg;
+    ctx.fillRect(px, 210, 18, 430);
+
+    // lantern hanging from the post
+    const lx = px + 9, ly = 226 + Math.sin(state.time * 1.3) * 1.5;
+    const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, 120);
+    lg.addColorStop(0, 'rgba(255,190,90,0.33)');
+    lg.addColorStop(1, 'rgba(255,170,70,0)');
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(lx, ly, 120, 0, Math.PI * 2); ctx.fill();
+
+    const stars = `★ ${totalStars()}/${LEVELS.length * 3}`;
+    button(30, 240, 262, 66, 'LEVELS', () => go('levels'), { primary: true, size: 26, rot: -0.025, align: 'left', sub: stars, title: true });
+    button(30, 320, 236, 56, 'ENDLESS', () => startGame('endless'), { size: 22, rot: 0.018, align: 'left', sub: save.best ? `BEST ${save.best}` : '', title: true });
+    button(30, 392, 168, 46, 'SHOP', () => go('shop'), { size: 17, rot: -0.02, align: 'left' });
+    button(30, 448, 196, 46, 'HIGH SCORES', () => go('scores'), { size: 17, rot: 0.015, align: 'left' });
+    button(30, 504, 186, 46, 'HOW TO PLAY', () => go('how'), { size: 17, rot: -0.012, align: 'left' });
+
+    // the lantern itself, in front of the top sign
+    ctx.fillStyle = '#1b130c';
+    ctx.fillRect(lx - 1, 212, 2, ly - 220);
+    ctx.fillStyle = '#2b2118';
+    ctx.fillRect(lx - 7, ly - 8, 14, 3);
+    ctx.fillStyle = '#ffd98a';
+    ctx.fillRect(lx - 5, ly - 5, 10, 11);
+    ctx.fillStyle = '#2b2118';
+    ctx.fillRect(lx - 7, ly + 6, 14, 3);
+
+    if (save.jackets > 0) text(`LIFE JACKETS ×${save.jackets}`, W - 18, 600, 13, C.soft, 'right', '700');
   }
 
   function star(x, y, r, on) {
@@ -1098,47 +1269,85 @@
     ctx.fill();
   }
 
+  // Levels: a map of the river with a numbered buoy for each level, start at the bottom
+  function levelNode(i) {
+    return { x: W / 2 + Math.sin(i * 1.15 + 0.4) * 92, y: 590 - i * 51 };
+  }
+
   function drawLevels() {
+    // dim the world and draw the map on top
+    ctx.fillStyle = 'rgba(10,8,5,0.6)';
+    ctx.fillRect(0, 0, W, H);
     backButton();
     coinBadge(W - 16, 34);
-    text('Levels', W / 2, 34, 22, C.title);
+    title('LEVELS', W / 2, 36, 26, C.title);
     text(`★ ${totalStars()} / ${LEVELS.length * 3}`, W / 2, 66, 14, C.warm, 'center', '700');
-    const cw = (W - 44) / 2, ch = 92;
-    LEVELS.forEach((L, i) => {
-      const x = 16 + (i % 2) * (cw + 12);
-      const y = 86 + Math.floor(i / 2) * (ch + 10);
-      const open = levelUnlocked(i);
-      const stars = save.stars[i] || 0;
-      ctx.fillStyle = open ? 'rgba(14,30,44,0.94)' : 'rgba(20,24,28,0.85)';
-      ctx.strokeStyle = stars ? 'rgba(242,196,90,0.6)' : open ? 'rgba(150,205,235,0.55)' : 'rgba(120,130,140,0.3)';
-      ctx.lineWidth = 2;
+
+    // the river route through all the buoys
+    const pts = LEVELS.map((_, i) => levelNode(i));
+    const route = () => {
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(x, y, cw, ch, 14); else ctx.rect(x, y, cw, ch);
-      ctx.fill(); ctx.stroke();
-      if (open) {
-        text(String(i + 1), x + 16, y + 26, 26, stars ? C.warm : '#fff', 'left', '800');
-        text(L.name, x + 16, y + 54, 13, C.soft, 'left', '700');
-        for (let k = 0; k < 3; k++) star(x + 24 + k * 22, y + 76, 8, k < stars);
-        buttons.push({ x, y, w: cw, h: ch, onTap: () => startGame('level', i) });
-      } else {
-        text(String(i + 1), x + 16, y + 26, 26, '#5d6870', 'left', '800');
-        text('Locked', x + 16, y + 54, 13, '#5d6870', 'left', '700');
-        // padlock
-        const lx = x + cw - 30, ly = y + 30;
-        ctx.strokeStyle = '#5d6870'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(lx, ly, 7, Math.PI, 0); ctx.stroke();
-        ctx.fillStyle = '#5d6870'; ctx.fillRect(lx - 10, ly, 20, 15);
-        buttons.push({ x, y, w: cw, h: ch, onTap: () => { sfx.nope(); toast(`Finish level ${i} to unlock`); } });
+      ctx.moveTo(pts[0].x, H + 20);
+      ctx.lineTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        ctx.bezierCurveTo(a.x, (a.y + b.y) / 2, b.x, (a.y + b.y) / 2, b.x, b.y);
       }
+      ctx.lineTo(pts[pts.length - 1].x, 70);
+    };
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#4e4433'; ctx.lineWidth = 40; route(); ctx.stroke();
+    ctx.strokeStyle = '#1f4a63'; ctx.lineWidth = 30; route(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(190,225,240,0.18)'; ctx.lineWidth = 2;
+    ctx.setLineDash([6, 12]); ctx.lineDashOffset = -state.time * 12; route(); ctx.stroke(); ctx.setLineDash([]);
+
+    const next = LEVELS.findIndex((_, i) => !(save.stars[i] > 0));
+    LEVELS.forEach((L, i) => {
+      const { x, y } = pts[i];
+      const open = levelUnlocked(i);
+      const done = (save.stars[i] || 0) > 0;
+      if (i === next && open) {
+        const pulse = 0.5 + 0.5 * Math.sin(state.time * 4);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, 40);
+        g.addColorStop(0, `rgba(255,201,92,${0.35 + 0.3 * pulse})`);
+        g.addColorStop(1, 'rgba(255,201,92,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI * 2); ctx.fill();
+      }
+      // buoy: striped float
+      ctx.save();
+      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = !open ? '#4a4641' : done ? '#2f7a4a' : '#b8382c';
+      ctx.fillRect(x - 18, y - 18, 36, 36);
+      ctx.fillStyle = !open ? '#6a655e' : '#efe2bf';
+      ctx.fillRect(x - 18, y - 5, 36, 10);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.stroke();
+      text(open ? String(i + 1) : '–', x, y + 1, 14, open ? '#1c120a' : '#2a2724', 'center', '700');
+
+      const right = x < W / 2;
+      const tx = right ? x + 28 : x - 28;
+      const al = right ? 'left' : 'right';
+      text(open ? L.name.toUpperCase() : 'LOCKED', tx, y - 7, 13, open ? '#efe2bf' : '#6f665a', al, '700');
+      if (open) {
+        for (let k = 0; k < 3; k++) {
+          const sx = right ? tx + 6 + k * 15 : tx - 6 - (2 - k) * 15;
+          star(sx, y + 11, 6, k < (save.stars[i] || 0));
+        }
+      }
+      buttons.push({ x: x - 26, y: y - 24, w: 150, h: 48, onTap: open ? () => startGame('level', i) : () => { sfx.nope(); toast(`Finish level ${i} to unlock`); } });
+      if (!right) buttons[buttons.length - 1].x = x - 124;
     });
   }
 
   function drawHow() {
     backButton();
     panel(20, 70, W - 40, 470);
-    text('How to play', W / 2, 104, 26, C.title);
+    title('HOW TO PLAY', W / 2, 106, 24, C.title);
     const rows = [
-      ['Steer the boat', 'Drag your thumb left and right on the bottom pad. Let go and the boat goes straight.'],
+      ['Steer the boat', 'Put your thumb on the bottom pad: a joystick appears. Left and right steer, push up to go faster. Let go and the boat goes straight.'],
       ['Fly the helicopter', 'Touch anywhere above the pad with another finger. Its spotlight shows the river.'],
       ['Remember the river', 'Lit spots stay visible for a moment, so scout ahead, then steer.'],
       ['The river splits', 'Pick a side. Rocks or a fallen log can block one way, so light it first.'],
@@ -1154,7 +1363,7 @@
   }
 
   function wrap(str, x, y, maxW, size, color) {
-    ctx.font = `500 ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `600 ${Math.round(size * 1.12)}px ${UI_FONT}`; // same size text() draws at
     const words = str.split(' ');
     let line = '';
     for (const word of words) {
@@ -1171,7 +1380,7 @@
   function drawShop() {
     backButton();
     coinBadge(W - 16, 34);
-    text('Shop', W / 2, 34, 22, C.title);
+    title('SHOP', W / 2, 36, 24, C.title);
     const x = 16, w = W - 32;
     let y = 70;
     text('UPGRADES', x, y, 12, C.dim, 'left', '700');
@@ -1186,7 +1395,7 @@
         ctx.fillStyle = k < lvl ? C.warm : 'rgba(255,255,255,0.18)';
         ctx.fillRect(x + 196 + k * 12, y + 14, 9, 9);
       }
-      button(x + w - 92, y + 10, 82, 32, maxed ? 'MAX' : `● ${u.costs[lvl]}`, () => buyUpgrade(u), { size: 14, disabled: maxed, primary: !maxed && save.coins >= u.costs[lvl] });
+      button(x + w - 92, y + 10, 82, 32, maxed ? 'MAX' : String(u.costs[lvl]), () => buyUpgrade(u), { size: 14, disabled: maxed, primary: !maxed && save.coins >= u.costs[lvl], coin: !maxed });
       y += 60;
     }
     y += 8;
@@ -1195,8 +1404,8 @@
     panel(x, y, w, 52);
     text(JACKET.name, x + 12, y + 18, 15, '#fff', 'left', '700');
     text(`${JACKET.desc} · have ${save.jackets}/${JACKET.max}`, x + 12, y + 36, 12, C.soft, 'left', '500');
-    button(x + w - 92, y + 10, 82, 32, save.jackets >= JACKET.max ? 'FULL' : `● ${JACKET.cost}`, buyJacket,
-      { size: 14, disabled: save.jackets >= JACKET.max, primary: save.jackets < JACKET.max && save.coins >= JACKET.cost });
+    button(x + w - 92, y + 10, 82, 32, save.jackets >= JACKET.max ? 'FULL' : String(JACKET.cost), buyJacket,
+      { size: 14, disabled: save.jackets >= JACKET.max, primary: save.jackets < JACKET.max && save.coins >= JACKET.cost, coin: save.jackets < JACKET.max });
     y += 68;
     text('BOATS', x, y, 12, C.dim, 'left', '700');
     y += 12;
@@ -1205,14 +1414,11 @@
       const bx = x + i * (cw + 8);
       const owned = save.boats.includes(b.id);
       const on = save.boat === b.id;
-      ctx.fillStyle = on ? 'rgba(242,196,90,0.18)' : 'rgba(8,16,24,0.92)';
-      ctx.strokeStyle = on ? C.warm : 'rgba(150,205,235,0.35)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bx, y, cw, 112, 12); else ctx.rect(bx, y, cw, 112);
-      ctx.fill(); ctx.stroke();
+      panel(bx, y, cw, 112);
+      if (on) { ctx.strokeStyle = C.warm; ctx.lineWidth = 3; ctx.strokeRect(bx + 1.5, y + 1.5, cw - 3, 109); }
       drawBoat(bx + cw / 2, y + 40, 0, 0, b.id, 1.05);
-      text(on ? 'In use' : owned ? 'Use' : `● ${b.cost}`, bx + cw / 2, y + 92, 12, on ? C.warm : owned ? '#fff' : (save.coins >= b.cost ? C.warm : C.dim), 'center', '700');
+      if (!owned) coin(bx + cw / 2 - 16, y + 92, 5);
+      text(on ? 'IN USE' : owned ? 'USE' : String(b.cost), bx + cw / 2 + (owned ? 0 : 5), y + 92, 12, on ? C.warm : owned ? '#fff' : (save.coins >= b.cost ? C.warm : C.dim), 'center', '700');
       buttons.push({ x: bx, y, w: cw, h: 112, onTap: () => tapBoat(b) });
     });
     text(boatSkin(save.boat).name, W / 2, y + 130, 13, C.soft, 'center', '600');
@@ -1221,7 +1427,7 @@
 
   function drawScores() {
     backButton();
-    text('Endless scores', W / 2, 34, 22, C.title);
+    title('SCORES', W / 2, 36, 24, C.title);
     const tabW = (W - 48) / 2;
     button(16, 66, tabW, 36, 'This device', () => { state.scoresTab = 'device'; sfx.click(); },
       { size: 14, primary: state.scoresTab === 'device' });
@@ -1306,16 +1512,16 @@
     }
     // Pad
     if (hasTouch) {
-      ctx.fillStyle = state.steerId !== null ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)';
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
       ctx.fillRect(0, PAD_TOP, W, H - PAD_TOP);
       ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.setLineDash([6, 8]);
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(0, PAD_TOP); ctx.lineTo(W, PAD_TOP); ctx.stroke();
       ctx.setLineDash([]);
-      if (state.playTime < 6) {
-        text('◀  drag here to steer the boat  ▶', W / 2, PAD_TOP + 50, 14, 'rgba(255,255,255,0.75)', 'center', '600');
-        text('touch above to fly the helicopter', W / 2, PAD_TOP + 78, 13, 'rgba(255,255,255,0.55)', 'center', '500');
+      drawJoystick();
+      if (state.playTime < 6 && !state.joy) {
+        text('touch above to fly the helicopter', W / 2, PAD_TOP - 18, 13, 'rgba(255,255,255,0.6)', 'center', '600');
       }
     }
     for (const p of state.popups) {
@@ -1325,8 +1531,38 @@
     }
   }
 
+  function drawJoystick() {
+    const j = state.joy;
+    const ox = j ? j.ox : W / 2, oy = j ? j.oy : PAD_TOP + 70;
+    const kx = j ? j.kx : 0, ky = j ? j.ky : 0;
+    ctx.globalAlpha = j ? 0.95 : 0.5;
+    // base ring with arrows: left, right, and forward = boost
+    ctx.strokeStyle = 'rgba(239,226,191,0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ox, oy, JOY_R, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.arc(ox, oy, JOY_R, 0, Math.PI * 2); ctx.fill();
+    const arrow = (ax, ay, ang, col) => {
+      ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang);
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-4, -6); ctx.lineTo(-4, 6); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    };
+    arrow(ox - JOY_R + 10, oy, Math.PI, 'rgba(239,226,191,0.7)');
+    arrow(ox + JOY_R - 10, oy, 0, 'rgba(239,226,191,0.7)');
+    arrow(ox, oy - JOY_R + 10, -Math.PI / 2, state.boost > 0.2 ? '#ffc95c' : 'rgba(255,201,92,0.8)');
+    // knob
+    ctx.fillStyle = state.boost > 0.2 ? '#e3912f' : '#7a5636';
+    ctx.beginPath(); ctx.arc(ox + kx, oy + ky, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ox + kx, oy + ky, 20, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    if (!j && state.playTime < 6) text('STEER  ·  PUSH UP TO BOOST', ox, oy + JOY_R + 16, 12, 'rgba(239,226,191,0.75)', 'center', '700');
+    if (state.boost > 0.2) text('BOOST', ox, oy - JOY_R - 14, 13, '#ffc95c', 'center', '700');
+  }
+
   function wrapCenter(str, x, y, maxW, size, color) {
-    ctx.font = `600 ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+    ctx.font = `600 ${Math.round(size * 1.12)}px ${UI_FONT}`;
     const lines = [];
     let line = '';
     for (const word of str.split(' ')) {
@@ -1379,7 +1615,7 @@
   function drawWin() {
     const i = state.levelIdx;
     panel(30, 100, W - 60, 300);
-    text('Level complete!', W / 2, 140, 28, C.good);
+    title('LEVEL COMPLETE', W / 2, 142, 24, C.good);
     text(`${i + 1}. ${LEVELS[i].name}`, W / 2, 174, 15, C.soft, 'center', '600');
     const shown = Math.min(state.levelStars, Math.floor((state.time - state.overAt) / 0.3) + 1);
     for (let k = 0; k < 3; k++) star(W / 2 - 52 + k * 52, 226, k === 1 ? 24 : 20, k < shown);
