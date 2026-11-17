@@ -483,6 +483,8 @@
     // Keep a copy of the save, so reviving can take back this run's coins and score
     // (they're counted again when the revived run ends).
     state.beforeCrash = state.revived ? null : JSON.parse(JSON.stringify(save));
+    // First crash of the run: offer a revive in a pop-up before showing the results.
+    if (canRevive()) { state.screen = 'offer'; state.offerAt = state.time; }
 
     const s = score();
     if (state.mode === 'level') {
@@ -507,6 +509,11 @@
 
   // ---------- Revive (once per run, by watching an ad) ----------
   const canRevive = () => !state.revived && state.beforeCrash && (state.mode === 'endless' || state.distance < finishW());
+  const OFFER_SECS = 6; // the pop-up waits this long, then shows the results
+  function showResults() {
+    state.screen = 'over';
+    state.overAt = state.time;
+  }
   function watchAdToRevive() {
     if (!canRevive()) return;
     state.screen = 'ad';
@@ -514,7 +521,7 @@
     ads.show((ok) => {
       if (state.screen !== 'ad') return;
       if (ok) revive();
-      else { state.screen = 'over'; state.overAt = state.time - 1; toast('No ad right now, sorry. Try again later.'); }
+      else { showResults(); toast('No ad right now, sorry.'); }
     });
   }
   function revive() {
@@ -583,6 +590,7 @@
     if (playing() && hit({ x: p.x, y: p.y - SAFE_TOP }, PAUSE_BTN)) { pause(); return; }
     if (!playing()) {
       if ((state.screen === 'over' || state.screen === 'win') && state.time - state.overAt < 0.6) return;
+      if (state.screen === 'offer' && state.time - state.offerAt < 0.4) return; // don't let a steering thumb tap it by accident
       if (state.pendingTap) return;
       p.y -= uiShift(); // buttons are drawn shifted down by this much
       for (const b of buttons) {
@@ -624,7 +632,7 @@
     state.screen = 'play';
     last = performance.now();
   }
-  const CENTRED = ['how', 'scores', 'over', 'win', 'paused', 'ad'];
+  const CENTRED = ['how', 'scores', 'over', 'win', 'paused', 'ad', 'offer'];
   function uiShift() {
     if (playing()) return SAFE_TOP;
     const extra = Math.max(0, H - SAFE_TOP - 640);
@@ -679,7 +687,7 @@
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-  const menuSweep = () => !playing() && !['over', 'win', 'paused', 'ad'].includes(state.screen);
+  const menuSweep = () => !playing() && !['over', 'win', 'paused', 'ad', 'offer'].includes(state.screen);
   function spotTarget() {
     if (menuSweep()) return { x: W / 2 + Math.sin(state.time * 0.55) * 120, y: 330 + Math.sin(state.time * 0.9) * 150 };
     if (state.finger) return { x: state.finger.x, y: Math.max(20, state.finger.y - HELI_OFFSET) };
@@ -698,6 +706,7 @@
     if (state.press && state.press.up != null && state.time - state.press.up > 0.5) state.press = null;
     if (state.banner) { state.banner.age += dt; if (state.banner.age > 2.4) state.banner = null; }
     if (state.toast) { state.toast.age += dt; if (state.toast.age > 2) state.toast = null; }
+    if (state.screen === 'offer' && state.time - state.offerAt > OFFER_SECS) showResults();
 
     const target = spotTarget();
     if (target) {
@@ -804,7 +813,7 @@
         }
       }
       state.lanternsList = state.lanternsList.filter((ln) => ln.alive && toScreenY(ln.w) < H + 30);
-    } else if (!['over', 'win', 'paused', 'ad'].includes(state.screen)) {
+    } else if (!['over', 'win', 'paused', 'ad', 'offer'].includes(state.screen)) {
       state.distance += 30 * dt; // gentle drift behind the menus
     }
 
@@ -1897,11 +1906,9 @@
       text(`+${state.coinsEarned} coins`, W / 2 - 38, 297, 17, C.warm, 'left', '700');
       text('Same river every time: you can learn it!', W / 2, 336, 12, C.soft, 'center', '500');
       if (state.time - state.overAt > 0.6) {
-        let y = 400;
-        if (canRevive()) { reviveButton(y); y += 68; }
-        button(50, y, W - 100, 56, 'TRY AGAIN', () => startGame('level', state.levelIdx), { primary: !canRevive(), size: 20 });
-        button(50, y + 68, (W - 112) / 2, 44, 'Levels', () => go('levels'), { size: 15 });
-        button(62 + (W - 112) / 2, y + 68, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
+        button(50, 400, W - 100, 56, 'TRY AGAIN', () => startGame('level', state.levelIdx), { primary: true, size: 20 });
+        button(50, 468, (W - 112) / 2, 44, 'Levels', () => go('levels'), { size: 15 });
+        button(62 + (W - 112) / 2, 468, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
       }
       return;
     }
@@ -1918,25 +1925,47 @@
     text(`${state.lanterns} crates · ${Math.floor(score() / 50)} from points`, W / 2, 360, 12, C.soft, 'center', '500');
     text(`You have ${save.coins} coins`, W / 2, 386, 13, C.soft, 'center', '600');
     if (state.time - state.overAt > 0.6) {
-      let y = 432;
-      if (canRevive()) { reviveButton(y); y += 68; }
-      button(50, y, W - 100, 56, 'PLAY AGAIN', () => startGame('endless'), { primary: !canRevive(), size: 20 });
-      button(50, y + 68, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
-      button(62 + (W - 112) / 2, y + 68, (W - 112) / 2, 44, 'Menu', () => go('menu'), { size: 15 });
+      button(50, 432, W - 100, 56, 'PLAY AGAIN', () => startGame('endless'), { primary: true, size: 20 });
+      button(50, 500, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
+      button(62 + (W - 112) / 2, 500, (W - 112) / 2, 44, 'Menu', () => go('menu'), { size: 15 });
     }
   }
 
-  function reviveButton(y) {
-    button(50, y, W - 100, 56, 'REVIVE', watchAdToRevive, { primary: true, size: 20 });
-    // a small "play" mark so it reads as "watch a video"
+  // The pop-up after the first crash: revive with an ad, or see the results.
+  function drawOffer() {
+    const t = state.time - state.offerAt;
+    const left = Math.max(0, OFFER_SECS - t);
+    ctx.fillStyle = 'rgba(5,4,3,0.6)';
+    ctx.fillRect(0, -H, W, H * 3);
+    const a = Math.min(1, t * 5); // pops in
     ctx.save();
-    ctx.translate(0, 3 * pressAmount(50, y, W - 100, 56));
+    ctx.translate(W / 2, 300);
+    ctx.scale(0.85 + 0.15 * a, 0.85 + 0.15 * a);
+    ctx.translate(-W / 2, -300);
+    ctx.globalAlpha = a;
+    panel(36, 140, W - 72, 330);
+    title('KEEP GOING?', W / 2, 182, 26, C.title);
+    text(state.reason, W / 2, 214, 15, C.bad, 'center', '700');
+    // countdown ring
+    const cx = W / 2, cy = 272, r = 30;
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = C.warm;
+    ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (left / OFFER_SECS)); ctx.stroke();
+    text(String(Math.ceil(left)), cx, cy + 1, 26, '#fff', 'center', '700');
+    button(56, 330, W - 112, 58, 'REVIVE', watchAdToRevive, { primary: true, size: 22, title: true });
+    // a "play" mark so it reads as "watch a video"
+    ctx.save();
+    ctx.translate(0, 3 * pressAmount(56, 330, W - 112, 58));
     ctx.fillStyle = 'rgba(30,18,6,0.85)';
-    ctx.beginPath(); ctx.arc(W - 86, y + 28, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 92, 359, 13, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#ffd56b';
-    ctx.beginPath(); ctx.moveTo(W - 90, y + 21); ctx.lineTo(W - 79, y + 28); ctx.lineTo(W - 90, y + 35); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W - 96, 352); ctx.lineTo(W - 85, 359); ctx.lineTo(W - 96, 366); ctx.closePath(); ctx.fill();
     ctx.restore();
-    text('Watch a short ad · once per run', W / 2, y + 63, 11, C.soft, 'center', '600');
+    text('Watch a short ad to carry on from here', W / 2, 400, 12, C.soft, 'center', '600');
+    button(100, 418, W - 200, 38, 'No thanks', showResults, { size: 15 });
+    ctx.restore();
   }
 
   function drawAd() {
@@ -1995,7 +2024,7 @@
     drawLand();
     drawRiver();
     drawScenery();
-    const showBoat = playing() || ['over', 'win', 'menu', 'paused', 'ad'].includes(state.screen);
+    const showBoat = playing() || ['over', 'win', 'menu', 'paused', 'ad', 'offer'].includes(state.screen);
     if (showBoat) drawBoat(state.boatX, BOAT_Y, playing() ? state.boatTilt : 0, playing() ? state.edge : 0);
     if (playing() || state.screen === 'paused') drawLanterns();
     drawDarkness();
@@ -2009,7 +2038,7 @@
     }
     ctx.restore();
 
-    if (!playing() && !['over', 'win', 'paused', 'ad'].includes(state.screen)) {
+    if (!playing() && !['over', 'win', 'paused', 'ad', 'offer'].includes(state.screen)) {
       ctx.fillStyle = 'rgba(2,4,12,0.35)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -2027,6 +2056,7 @@
       case 'win': drawWin(); break;
       case 'paused': drawPaused(); break;
       case 'ad': drawAd(); break;
+      case 'offer': drawOffer(); break;
       case 'levels': drawLevels(); break;
     }
     ctx.restore();

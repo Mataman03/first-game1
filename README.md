@@ -6,7 +6,7 @@ Steer a boat down a river at night while a helicopter lights the way. Every run 
 - **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger. Spots you lit stay faintly visible for a moment, so scout ahead and remember the way.
 - **The river splits** around wooded islands. Often one side is blocked by rocks and a fallen log with blinking red warning lights.
 - **Hit the bank, the island or the rocks and the run ends.**
-- **Revive:** after a crash you can watch a short ad once per run to carry on from where you crashed, with 3 seconds of safety. In a browser a pretend 3-second ad plays instead.
+- **Revive:** after your first crash in a run, a "Keep going?" pop-up offers a short ad to carry on from where you crashed, with 3 seconds of safety. Tap "No thanks" or wait 6 seconds to see the results. In a browser a pretend 3-second ad plays instead.
 - **Pause** with the button in the top-right corner (Resume, Restart, Quit). The game also pauses if you leave the app.
 - **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.
 
