@@ -123,6 +123,51 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* ignore */ }
   }
 
+  // ---------- Reward ads ("watch an ad to revive") ----------
+  // In the Android app this uses AdMob through the @capacitor-community/admob plugin.
+  // In a browser there are no ads, so a short pretend ad plays instead (handy for testing).
+  // These are Google's TEST ids: swap in your own ad unit id from admob.google.com
+  // (and the app id in android/app/src/main/res/values/strings.xml) before publishing.
+  const AD_UNIT_ID = 'ca-app-pub-3940256099942544/5224354917';
+  const AD_TESTING = true; // set to false with your real ad unit id
+  const ads = (() => {
+    const cap = window.Capacitor;
+    const native = !!(cap && cap.getPlatform && cap.getPlatform() !== 'web' && cap.nativePromise);
+    let ready = false, loading = false, started = false;
+    const call = (method, opts = {}) => cap.nativePromise('AdMob', method, opts);
+    async function preload() {
+      if (!native || ready || loading) return;
+      loading = true;
+      try {
+        if (!started) { await call('initialize', { initializeForTesting: AD_TESTING }); started = true; }
+        await call('prepareRewardVideoAd', { adId: AD_UNIT_ID, isTesting: AD_TESTING });
+        ready = true;
+      } catch { ready = false; } finally { loading = false; }
+    }
+    // Shows a reward ad. Calls done(true) if the player watched it to the end, done(false) otherwise.
+    function show(done) {
+      if (!native) { setTimeout(() => done(true), 3000); return; } // pretend ad in the browser
+      let rewarded = false, finished = false;
+      const subs = [];
+      const finish = (ok) => {
+        if (finished) return;
+        finished = true;
+        subs.forEach((h) => { try { h.remove(); } catch { /* ignore */ } });
+        ready = false;
+        setTimeout(preload, 1000); // get the next one ready
+        done(ok);
+      };
+      subs.push(cap.addListener('AdMob', 'onRewardedVideoAdReward', () => { rewarded = true; }));
+      subs.push(cap.addListener('AdMob', 'onRewardedVideoAdDismissed', () => finish(rewarded)));
+      subs.push(cap.addListener('AdMob', 'onRewardedVideoAdFailedToShow', () => finish(false)));
+      const go = () => call('showRewardVideoAd').then(() => { rewarded = true; }).catch(() => finish(rewarded));
+      if (ready) go();
+      else preload().then(() => (ready ? go() : finish(false)));
+    }
+    return { native, preload, show, get ready() { return ready || !native; } };
+  })();
+  ads.preload();
+
   // ---------- Online leaderboard (only on the web version, when signed in) ----------
   const online = { db: null, user: null, myId: null, rows: null, status: 'off', names: {} };
   (async function connect(tries = 0) {
@@ -402,8 +447,9 @@
       bonus: 0, lanterns: 0, lanternTotal: 0, newBest: false, coinsEarned: 0,
       boatX: W / 2, boatTilt: 0, invuln: 0, marks: [], foam: [], boost: 0,
       lanternsList: [], nextLanternW: LANTERN_EVERY, popups: [], edge: 0, reason: '', playTime: 0,
-      banner, levelStars: 0, firstClear: false,
+      banner, levelStars: 0, firstClear: false, revived: false, beforeCrash: null,
     });
+    ads.preload();
     sfx.start();
     vibrate(30);
   }
@@ -434,6 +480,9 @@
     state.shake = 12;
     sfx.over();
     vibrate([100, 60, 140]);
+    // Keep a copy of the save, so reviving can take back this run's coins and score
+    // (they're counted again when the revived run ends).
+    state.beforeCrash = state.revived ? null : JSON.parse(JSON.stringify(save));
 
     const s = score();
     if (state.mode === 'level') {
@@ -454,6 +503,43 @@
     save.top = save.top.slice(0, 10);
     persist();
     submitOnline(s, state.level);
+  }
+
+  // ---------- Revive (once per run, by watching an ad) ----------
+  const canRevive = () => !state.revived && state.beforeCrash && (state.mode === 'endless' || state.distance < finishW());
+  function watchAdToRevive() {
+    if (!canRevive()) return;
+    state.screen = 'ad';
+    state.adAt = state.time;
+    ads.show((ok) => {
+      if (state.screen !== 'ad') return;
+      if (ok) revive();
+      else { state.screen = 'over'; state.overAt = state.time - 1; toast('No ad right now, sorry. Try again later.'); }
+    });
+  }
+  function revive() {
+    Object.assign(save, state.beforeCrash); // undo the coins and score from the crash
+    persist();
+    state.beforeCrash = null;
+    state.revived = true;
+    // Put the boat back in the middle of open water: in a split, the side without rocks.
+    const d = state.distance;
+    const p = riverAt(d);
+    if (p.island > 2) {
+      let side = state.boatX < p.x ? -1 : 1;
+      if (blockers.some((b) => b.side === side && b.w > d - 40 && b.w < d + 450)) side = -side;
+      state.boatX = channelCenter(d, side);
+    } else {
+      state.boatX = p.x;
+    }
+    Object.assign(state, {
+      screen: 'play', invuln: 3, boatTilt: 0, edge: 0, boost: 0, shake: 0, coinsEarned: 0, newBest: false,
+      steerId: null, joy: null, lightId: null, finger: null,
+      banner: { text: 'Revived!', sub: 'Safe for 3 seconds', age: 0 },
+    });
+    last = performance.now();
+    sfx.start();
+    vibrate(40);
   }
 
   // ---------- Buttons (menus are drawn on the canvas) ----------
@@ -538,7 +624,7 @@
     state.screen = 'play';
     last = performance.now();
   }
-  const CENTRED = ['how', 'scores', 'over', 'win', 'paused'];
+  const CENTRED = ['how', 'scores', 'over', 'win', 'paused', 'ad'];
   function uiShift() {
     if (playing()) return SAFE_TOP;
     const extra = Math.max(0, H - SAFE_TOP - 640);
@@ -593,7 +679,7 @@
   });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-  const menuSweep = () => !playing() && !['over', 'win', 'paused'].includes(state.screen);
+  const menuSweep = () => !playing() && !['over', 'win', 'paused', 'ad'].includes(state.screen);
   function spotTarget() {
     if (menuSweep()) return { x: W / 2 + Math.sin(state.time * 0.55) * 120, y: 330 + Math.sin(state.time * 0.9) * 150 };
     if (state.finger) return { x: state.finger.x, y: Math.max(20, state.finger.y - HELI_OFFSET) };
@@ -718,7 +804,7 @@
         }
       }
       state.lanternsList = state.lanternsList.filter((ln) => ln.alive && toScreenY(ln.w) < H + 30);
-    } else if (!['over', 'win', 'paused'].includes(state.screen)) {
+    } else if (!['over', 'win', 'paused', 'ad'].includes(state.screen)) {
       state.distance += 30 * dt; // gentle drift behind the menus
     }
 
@@ -1811,9 +1897,11 @@
       text(`+${state.coinsEarned} coins`, W / 2 - 38, 297, 17, C.warm, 'left', '700');
       text('Same river every time: you can learn it!', W / 2, 336, 12, C.soft, 'center', '500');
       if (state.time - state.overAt > 0.6) {
-        button(50, 400, W - 100, 56, 'TRY AGAIN', () => startGame('level', state.levelIdx), { primary: true, size: 20 });
-        button(50, 468, (W - 112) / 2, 44, 'Levels', () => go('levels'), { size: 15 });
-        button(62 + (W - 112) / 2, 468, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
+        let y = 400;
+        if (canRevive()) { reviveButton(y); y += 68; }
+        button(50, y, W - 100, 56, 'TRY AGAIN', () => startGame('level', state.levelIdx), { primary: !canRevive(), size: 20 });
+        button(50, y + 68, (W - 112) / 2, 44, 'Levels', () => go('levels'), { size: 15 });
+        button(62 + (W - 112) / 2, y + 68, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
       }
       return;
     }
@@ -1830,9 +1918,39 @@
     text(`${state.lanterns} crates · ${Math.floor(score() / 50)} from points`, W / 2, 360, 12, C.soft, 'center', '500');
     text(`You have ${save.coins} coins`, W / 2, 386, 13, C.soft, 'center', '600');
     if (state.time - state.overAt > 0.6) {
-      button(50, 432, W - 100, 56, 'PLAY AGAIN', () => startGame('endless'), { primary: true, size: 20 });
-      button(50, 500, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
-      button(62 + (W - 112) / 2, 500, (W - 112) / 2, 44, 'Menu', () => go('menu'), { size: 15 });
+      let y = 432;
+      if (canRevive()) { reviveButton(y); y += 68; }
+      button(50, y, W - 100, 56, 'PLAY AGAIN', () => startGame('endless'), { primary: !canRevive(), size: 20 });
+      button(50, y + 68, (W - 112) / 2, 44, 'Shop', () => go('shop'), { size: 15 });
+      button(62 + (W - 112) / 2, y + 68, (W - 112) / 2, 44, 'Menu', () => go('menu'), { size: 15 });
+    }
+  }
+
+  function reviveButton(y) {
+    button(50, y, W - 100, 56, 'REVIVE', watchAdToRevive, { primary: true, size: 20 });
+    // a small "play" mark so it reads as "watch a video"
+    ctx.save();
+    ctx.translate(0, 3 * pressAmount(50, y, W - 100, 56));
+    ctx.fillStyle = 'rgba(30,18,6,0.85)';
+    ctx.beginPath(); ctx.arc(W - 86, y + 28, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd56b';
+    ctx.beginPath(); ctx.moveTo(W - 90, y + 21); ctx.lineTo(W - 79, y + 28); ctx.lineTo(W - 90, y + 35); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    text('Watch a short ad · once per run', W / 2, y + 63, 11, C.soft, 'center', '600');
+  }
+
+  function drawAd() {
+    ctx.fillStyle = 'rgba(5,4,3,0.75)';
+    ctx.fillRect(0, -H, W, H * 3);
+    panel(40, 200, W - 80, 160);
+    if (ads.native) {
+      title('LOADING AD', W / 2, 250, 22, C.title);
+      text('Your boat is waiting...', W / 2, 290, 14, C.soft, 'center', '600');
+    } else {
+      title('AD BREAK', W / 2, 250, 22, C.title);
+      text('(no ads in the browser: this is a stand-in)', W / 2, 284, 12, C.soft, 'center', '600');
+      const left = Math.max(0, 3 - (state.time - state.adAt));
+      text(`Reviving in ${Math.ceil(left)}`, W / 2, 322, 18, C.warm, 'center', '700');
     }
   }
 
@@ -1877,7 +1995,7 @@
     drawLand();
     drawRiver();
     drawScenery();
-    const showBoat = playing() || ['over', 'win', 'menu', 'paused'].includes(state.screen);
+    const showBoat = playing() || ['over', 'win', 'menu', 'paused', 'ad'].includes(state.screen);
     if (showBoat) drawBoat(state.boatX, BOAT_Y, playing() ? state.boatTilt : 0, playing() ? state.edge : 0);
     if (playing() || state.screen === 'paused') drawLanterns();
     drawDarkness();
@@ -1891,7 +2009,7 @@
     }
     ctx.restore();
 
-    if (!playing() && !['over', 'win', 'paused'].includes(state.screen)) {
+    if (!playing() && !['over', 'win', 'paused', 'ad'].includes(state.screen)) {
       ctx.fillStyle = 'rgba(2,4,12,0.35)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -1908,6 +2026,7 @@
       case 'over': drawOver(); break;
       case 'win': drawWin(); break;
       case 'paused': drawPaused(); break;
+      case 'ad': drawAd(); break;
       case 'levels': drawLevels(); break;
     }
     ctx.restore();

@@ -4,4 +4,6 @@
     <string name="title_activity_main">Night Watch</string>
     <string name="package_name">com.mataman03.nightwatch</string>
     <string name="custom_url_scheme">com.mataman03.nightwatch</string>
+    <!-- Google's test AdMob app id. Replace with your own from admob.google.com before publishing. -->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
 </resources>

@@ -6,6 +6,7 @@ Steer a boat down a river at night while a helicopter lights the way. Every run 
 - **Another finger anywhere above the pad flies the helicopter.** Its spotlight shines a little above your finger. Spots you lit stay faintly visible for a moment, so scout ahead and remember the way.
 - **The river splits** around wooded islands. Often one side is blocked by rocks and a fallen log with blinking red warning lights.
 - **Hit the bank, the island or the rocks and the run ends.**
+- **Revive:** after a crash you can watch a short ad once per run to carry on from where you crashed, with 3 seconds of safety. In a browser a pretend 3-second ad plays instead.
 - **Pause** with the button in the top-right corner (Resume, Restart, Quit). The game also pauses if you leave the app.
 - **Every level the night gets darker:** faster current, narrower river, smaller spotlight, and lit spots fade sooner.
 
@@ -75,12 +76,23 @@ base64 -w0 upload.jks
 
 Keep `upload.jks` and its passwords somewhere safe and **never commit them**. Google Play App Signing holds the real app key, so if you lose this upload key, Google can reset it.
 
+## Ads (watch an ad to revive)
+
+The revive button uses rewarded video ads from AdMob, through the [`@capacitor-community/admob`](https://github.com/capacitor-community/admob) plugin. Right now it uses **Google's test ids**, which show a "Test Ad" and never pay. Before publishing:
+
+1. Create an AdMob account at https://admob.google.com, add the app (Android), and create a **Rewarded** ad unit
+2. Put your **app id** (`ca-app-pub-…~…`) in `android/app/src/main/res/values/strings.xml` (`admob_app_id`)
+3. Put your **ad unit id** (`ca-app-pub-…/…`) in `www/game.js` (`AD_UNIT_ID`) and set `AD_TESTING = false`
+4. In Play Console, answer **Contains ads: Yes**, and in **Data safety** declare what the Google Mobile Ads SDK collects (device or other IDs, app interactions, diagnostics, used for advertising and analytics)
+
+Don't tap your own real ads: AdMob can ban the account. Keep `AD_TESTING = true` on your own test builds.
+
 ## Publishing to Google Play
 
 1. Create a developer account at https://play.google.com/console ($25, one time)
 2. **Create app**, name it "Night Watch", and choose Game / Free
 3. Fill in the store listing: short and full description, icon (512×512), feature graphic (1024×500), at least 2 phone screenshots
-4. Complete **App content**: privacy policy URL, ads (none), content rating questionnaire, target audience, data safety (no data collected)
+4. Complete **App content**: privacy policy URL, ads (yes: the revive ad), content rating questionnaire, target audience, data safety (what the AdMob SDK collects, see above)
 5. Upload the `.aab` to **Testing → Closed testing** and invite testers. New personal accounts need **12+ testers for 14 days** before they can apply for production.
 6. Apply for production access, then promote the release
 
