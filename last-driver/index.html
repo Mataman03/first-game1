@@ -460,21 +460,21 @@ function catmull(pts,steps){const out=[];for(let i=0;i<pts.length-1;i++){const p
     .5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)])}}
   out.push(pts[pts.length-1]);return out}
 function makeRoads(){
-  const W=WORLD,m=TILE,R=[];const e=TILE; // border ring sits on tiles 0-1 / N-2..N-1
-  R.push([[e,e],[W-e,e],[W-e,W-e],[e,W-e],[e,e]]);
-  // wavy arterials, edge to edge
-  const nV=randi(2,4),nH=randi(2,4);
-  const along=(n,i)=>W*(i+1)/(n+1)+rand(-W*.07,W*.07);
-  for(let i=0;i<nV;i++){const x=along(nV,i);const pts=[];const k=6;for(let j=0;j<=k;j++){const y=e+(W-2*e)*j/k;pts.push([j===0||j===k?x:x+rand(-1,1)*TILE*2.4,y])}R.push(catmull(pts,10))}
-  for(let i=0;i<nH;i++){const y=along(nH,i);const pts=[];const k=6;for(let j=0;j<=k;j++){const x=e+(W-2*e)*j/k;pts.push([x,j===0||j===k?y:y+rand(-1,1)*TILE*2.4])}R.push(catmull(pts,10))}
-  // sweeping curves: big S-bends and arcs between two edges
-  const edgePt=side=>{const t=rand(.2,.8)*W;return side===0?[t,e]:side===1?[W-e,t]:side===2?[t,W-e]:[e,t]};
-  const nC=randi(2,3);
-  for(let i=0;i<nC;i++){const s1=randi(0,3);let s2=(s1+randi(1,3))%4;const a=edgePt(s1),b=edgePt(s2);
-    const c1=[rand(.2,.8)*W,rand(.2,.8)*W],c2=[rand(.2,.8)*W,rand(.2,.8)*W];R.push(catmull([a,c1,c2,b],16))}
-  // a roundabout on one of the roads
-  if(Math.random()<.8){const base=pick(R.slice(1));const p=base[Math.floor(base.length*rand(.3,.7))];const rr=TILE*3.2;const ring=[];
-    for(let k=0;k<=40;k++){const t=k/40*Math.PI*2;ring.push([p[0]+Math.cos(t)*rr,p[1]+Math.sin(t)*rr])}R.push(ring);R.roundabout={x:p[0],y:p[1],r:rr}}
+  const W=WORLD,e=TILE,R=[];
+  R.push([[e,e],[W-e,e],[W-e,W-e],[e,W-e],[e,e]]); // ring road inside the barricades
+  // two main roads each way, with one long gentle bend
+  const bend=()=>rand(-1,1)*TILE*1.6;
+  const vx=[W*rand(.3,.38),W*rand(.62,.7)],hy=[W*rand(.3,.38),W*rand(.62,.7)];
+  for(const x of vx){const b1=bend();R.push(catmull([[x,e],[x+b1*.4,W*.3],[x+b1,W*.55],[x+b1*.5,W*.8],[x,W-e]],14))}
+  for(const y of hy){const b1=bend();R.push(catmull([[e,y],[W*.3,y+b1*.4],[W*.55,y+b1],[W*.8,y+b1*.5],[W-e,y]],14))}
+  // one smooth arc across a corner of the city
+  const c=randi(0,3);const ax=c%2?W-e:e,ay=c<2?e:W-e;const sx=c%2?-1:1,sy=c<2?1:-1;
+  const p1=[ax+sx*W*.18,ay],p2=[ax,ay+sy*W*.18];const mid=[ax+sx*W*.14,ay+sy*W*.14];
+  R.push(catmull([p1,[p1[0]+sx*W*.0,p1[1]+sy*W*.06],mid,[p2[0]+sx*W*.06,p2[1]],p2],12));
+  // roundabout where two main roads cross
+  const V=R[1+randi(0,1)],H=R[3+randi(0,1)];let best=1e9,pt=null;
+  for(const p of V)for(const q of H){const d=dist2(p[0],p[1],q[0],q[1]);if(d<best){best=d;pt=[(p[0]+q[0])/2,(p[1]+q[1])/2]}}
+  if(pt){const rr=TILE*3;const ring=[];for(let k=0;k<=40;k++){const t=k/40*Math.PI*2;ring.push([pt[0]+Math.cos(t)*rr,pt[1]+Math.sin(t)*rr])}R.push(ring);R.roundabout={x:pt[0],y:pt[1],r:rr}}
   return R;
 }
 function segDist(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay;const l=dx*dx+dy*dy;let t=l?((px-ax)*dx+(py-ay)*dy)/l:0;t=t<0?0:t>1?1:t;const x=ax+dx*t-px,y=ay+dy*t-py;return Math.sqrt(x*x+y*y)}
