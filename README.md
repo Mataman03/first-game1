@@ -1,12 +1,12 @@
 # first-game1
 
-## נהג אחרון (`last-driver/`)
-משחק הישרדות תלת-ממדי בדפדפן (three.js): נוהגים בעיר סגורה במחסומים, מלאה זומבים, ושורדים כמה שיותר זמן.
+## Last Driver (`last-driver/`)
+A 3D zombie survival driving game for the browser (three.js). Drive through a walled-off city full of zombies and survive as long as you can.
 
-- בכל עלייה ברמה בוחרים שדרוג אחד מתוך 3 (15 שדרוגים, 5 שלבים לכל אחד)
-- 5 סוגי זומבים ו-3 מיני-בוסים, אחד כל 2 דקות
-- מטבעות שנאספים במהלך הסיבוב, וחנות עם 8 סקינים
-- טבלת שיאים גלובלית (דרך מסד הנתונים של ה-Claude Artifact)
+- Pick 1 of 3 upgrades every level (15 upgrades, 5 tiers each)
+- 5 zombie types and 3 mini-bosses, one every 2 minutes
+- Coins collected during runs, and a garage with 8 cars, each with its own health, speed and ram power
+- Global leaderboard (via the Claude Artifact database)
 
-שליטה: ג׳ויסטיק אחד. גוררים (עכבר או אצבע) לכיוון הנסיעה, וככל שמתרחקים מהמרכז נוסעים מהר יותר. במקלדת: חיצים או WASD. `P` השהיה.
-אפשר לפתוח את `last-driver/index.html` ישירות בדפדפן (צריך אינטרנט בשביל three.js). במצב הזה הטבלה הגלובלית כבויה והשיא נשמר מקומית.
+Controls: one joystick. Drag (mouse or finger) toward where you want to go; the farther you drag, the faster you drive. Keyboard: arrows or WASD. `P` pauses.
+You can open `last-driver/index.html` directly in a browser (needs internet for three.js); the global leaderboard is off in that mode and your best is saved locally.

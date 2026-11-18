@@ -1,8 +1,8 @@
-<title>נהג אחרון</title>
+<title>Last Driver</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Rubik:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
 <style>
 /* Layout: full-bleed 3D night city; UI floats over it as amber road-sign plates. Home = title column / open stage for the car / dashboard column. Single dark look by design. */
 :root{
@@ -21,14 +21,14 @@
   --il-blue:#1f4fa8;
   --ink:#07080b;
   --paper2:#f2ede2;
-  --display:"Secular One","Rubik",system-ui,sans-serif;
+  --display:"Bungee","Rubik",system-ui,sans-serif;
   --body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:dark;
 }
 [hidden]{display:none!important}
 html,body{height:100%;background:var(--night);color:var(--paper);overflow:hidden}
 body{font-family:var(--body);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
-#app{position:fixed;inset:0;direction:rtl}
+#app{position:fixed;inset:0;direction:ltr}
 #game{position:absolute;inset:0;display:block;width:100%;height:100%}
 button{font-family:var(--body);cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--sodium);outline-offset:2px}
@@ -51,7 +51,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .panel>.btn,.plate>.btn,.col>.btn{flex:0 0 auto}
 .btn:hover{background:#2a2f3c;border-color:#4a5163}
 .btn:active{transform:translateY(2px)}
-.btn.go{background:var(--sodium);color:var(--sodium-ink);border:3px solid var(--ink);font-family:var(--display);font-weight:400;font-size:26px;
+.btn.go{background:var(--sodium);color:var(--sodium-ink);border:3px solid var(--ink);font-family:var(--display);font-weight:400;font-size:21px;
   box-shadow:5px 5px 0 var(--ink);padding:14px 18px}
 .btn.go:hover{background:#ffc260}
 .btn.go:active{box-shadow:1px 1px 0 var(--ink);transform:translate(4px,4px)}
@@ -71,11 +71,11 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .home-grid{flex:1;display:grid;grid-template-columns:1fr minmax(0,1fr);grid-template-rows:auto 1fr auto;grid-template-areas:"logo side" "slot side" "dock dock";gap:18px 28px;min-height:100%;max-width:1240px;margin:0 auto;width:100%}
 .stk{background:var(--paper2);color:var(--ink);border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink)}
 .logo{grid-area:logo;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding-top:6px}
-.title{margin:0;font-size:clamp(64px,9vw,118px);line-height:.9;color:var(--sodium);-webkit-text-stroke:4px var(--ink);paint-order:stroke fill;
-  text-shadow:7px 7px 0 var(--ink);transform:rotate(-3deg);transform-origin:right center;letter-spacing:.01em}
+.title{margin:0;font-size:clamp(52px,7.4vw,100px);line-height:.95;color:var(--sodium);-webkit-text-stroke:4px var(--ink);paint-order:stroke fill;
+  text-shadow:7px 7px 0 var(--ink);transform:rotate(-3deg);transform-origin:left center;letter-spacing:.01em}
 .hazard{display:inline-flex;align-items:center;gap:10px;padding:5px 14px;border:3px solid var(--ink);border-radius:6px;font:400 15px var(--display);color:var(--ink);
   background:repeating-linear-gradient(-45deg,var(--sodium) 0 14px,#f5d27f 14px 28px);box-shadow:4px 4px 0 var(--ink);transform:rotate(1.5deg)}
-.logo p{margin:14px 0 0;max-width:36ch;color:var(--paper);font-size:16px;line-height:1.55;text-shadow:0 2px 8px #000}
+.logo p{margin:14px 0 0;max-width:36ch;background:rgba(9,11,17,.62);padding:8px 12px;border-radius:8px;color:var(--paper);font-size:16px;line-height:1.55;text-shadow:0 2px 8px #000}
 .side{grid-area:side;display:flex;flex-direction:column;gap:14px;align-items:flex-end;justify-self:end;width:min(320px,100%)}
 .pills{display:flex;gap:10px;width:100%}
 .pill{flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:0}
@@ -100,10 +100,10 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .ilplate{display:flex;align-items:stretch;background:var(--il-yellow);border:3px solid var(--ink);border-radius:9px;overflow:hidden;direction:ltr;box-shadow:4px 4px 0 var(--ink);width:100%}
 .ilplate .strip{background:var(--il-blue);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 9px;font:700 13px var(--body);gap:1px;letter-spacing:.04em;border-right:3px solid var(--ink)}
 .ilplate .strip i{font-style:normal;font-size:9px;opacity:.85}
-.ilplate input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:400 26px var(--display);padding:6px 12px;text-align:center;direction:rtl;letter-spacing:.04em;-webkit-user-select:text;user-select:text}
+.ilplate input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:400 26px var(--display);padding:6px 12px;text-align:center;letter-spacing:.06em;text-transform:uppercase;-webkit-user-select:text;user-select:text}
 .ilplate input:focus{outline:none}
 .ilplate:focus-within{outline:3px solid var(--sodium);outline-offset:3px}
-.drive{border:4px solid var(--ink);border-radius:16px;background:var(--sodium);color:var(--ink);font:400 44px var(--display);padding:10px 20px 12px;box-shadow:7px 7px 0 var(--ink);
+.drive{border:4px solid var(--ink);border-radius:16px;background:var(--sodium);color:var(--ink);font:400 38px var(--display);padding:10px 20px 12px;box-shadow:7px 7px 0 var(--ink);
   display:flex;align-items:center;justify-content:center;gap:14px;transition:transform .08s,box-shadow .08s}
 .drive:hover{background:#ffc464}
 .drive:active{transform:translate(5px,5px);box-shadow:2px 2px 0 var(--ink)}
@@ -130,25 +130,44 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .mini .board li{padding:6px 9px}
 .mini .board .kl{display:none}
 
-/* ---------- shop ---------- */
-.stage{background:linear-gradient(270deg,rgba(9,11,17,.94) 0%,rgba(9,11,17,.75) 38%,rgba(9,11,17,0) 60%);align-items:stretch;justify-content:stretch}
-.stage-grid{flex:1;display:grid;grid-template-columns:minmax(330px,440px) 1fr;gap:24px;min-height:100%;align-items:center}
-.skins{display:flex;flex-direction:column;gap:6px;max-height:min(56vh,520px);overflow-y:auto;padding-inline-end:4px}
-.skin{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--plate-2);border:2px solid transparent;border-radius:10px;padding:9px 12px;text-align:right;color:var(--paper);width:100%;font:inherit}
-.skin:hover{border-color:#4a5163}
-.skin.sel{border-color:var(--sodium)}
-.sw{display:flex;direction:ltr}
-.sw i{width:20px;height:20px;border-radius:50%;border:2px solid var(--plate-2);margin-left:-7px}
-.sw i:first-child{margin-left:0}
-.skin h3{font-size:17px}
-.skin .st{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.skin .st.own{color:#8fd18f}.skin .st.on{color:var(--sodium)}
-.skin .st.price{color:var(--coin)}
-.preview-name{font-family:var(--display);font-size:30px;color:var(--paper)}
+/* ---------- garage ---------- */
+.stage{background:linear-gradient(90deg,rgba(9,11,17,.94) 0%,rgba(9,11,17,.7) 34%,rgba(9,11,17,0) 52%);align-items:stretch;justify-content:stretch}
+.stage-grid{flex:1;display:grid;grid-template-columns:minmax(330px,420px) 1fr;gap:28px;min-height:100%;max-width:1240px;margin:0 auto;width:100%}
+.stage-grid>.col{align-self:center}
+.skins{display:flex;flex-direction:column;gap:6px;max-height:min(66vh,560px);overflow-y:auto;padding:4px 8px 6px 2px}
+.skin{display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:center;background:var(--plate-2);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);border-radius:10px;padding:4px 12px 4px 4px;text-align:left;color:var(--paper);width:100%;font:inherit}
+.skin:hover{background:#2a2f3c}
+.skin.sel{background:#3a3220;border-color:var(--sodium);box-shadow:3px 3px 0 var(--sodium)}
+.skin img,.skin .ph{width:72px;height:48px;border-radius:6px;background:#141820;object-fit:cover;display:block}
+.skin h3{font-size:14px;letter-spacing:.02em}
+.skin .sub{display:flex;flex-direction:column;gap:3px;min-width:0}
+.skin .mini{display:flex;gap:8px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.skin .st{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.skin .st.own{color:#8fd18f}.skin .st.on{color:var(--sodium)}.skin .st.price{color:var(--coin)}
+.pv-col{display:flex;flex-direction:column;gap:14px;min-height:100%;padding-block:8px}
+.pv-col .car-slot{flex:1;min-height:220px}
+.pv-card{align-self:center;width:min(460px,100%);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.pv-head{display:flex;flex-direction:column;gap:2px}
+.pv-head h2{font-size:24px;color:var(--ink)}
+.pv-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b6352}
+.meters{display:flex;flex-direction:column;gap:9px}
+.meter{display:grid;grid-template-columns:88px 1fr 92px;gap:10px;align-items:center}
+.meter>span{font-weight:700;font-size:13px;color:var(--ink)}
+.segs{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.segs i{height:14px;border:2px solid var(--ink);border-radius:3px;background:#ddd5c3}
+.segs i.f{background:var(--sodium)}
+.segs i.up{background:#58c46a}
+.segs i.down{background:#e8a29c}
+.meter b{font-family:var(--display);font-weight:400;font-size:13px;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.meter b small{display:block;font:700 10px var(--body);color:#6b6352}
+.pv-btn{font-size:22px;padding:8px 16px}
+.pv-btn[disabled]{opacity:.6;cursor:default;box-shadow:3px 3px 0 var(--ink)}
+.legend{font-size:11px;color:#6b6352;margin:0;display:flex;gap:12px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border:2px solid var(--ink);border-radius:2px;vertical-align:-1px;margin-right:4px}
 
 /* ---------- level up ---------- */
 .lv-title{text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
-.lv-title h2{font-size:42px;color:var(--sodium)}
+.lv-title h2{font-size:38px;color:var(--sodium)}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(820px,100%)}
 .card{background:rgba(23,26,34,.95);border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);border-radius:12px;padding:16px 14px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;color:var(--paper);transition:transform .12s,border-color .12s}
 .card:hover,.card:focus-visible{transform:translateY(-4px);border-color:var(--sodium)}
@@ -199,7 +218,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .move-hint{position:absolute;left:0;right:0;text-align:center;bottom:calc(110px + env(safe-area-inset-bottom,0px));text-shadow:0 1px 4px #000;font-size:13px;color:var(--muted);line-height:1.4;transition:opacity .5s}
 
 .over-title{text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
-.over-title h2{font-size:46px;color:var(--hp)}
+.over-title h2{font-size:36px;color:var(--hp)}
 .over-time{font-family:var(--display);font-size:64px;color:var(--paper);font-variant-numeric:tabular-nums;line-height:1}
 .save-note{text-align:center;font-size:14px;color:var(--muted);min-height:1.4em;margin:0}
 .save-note.good{color:var(--sodium)}
@@ -209,23 +228,30 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   .home{background:linear-gradient(180deg,rgba(9,11,17,.8) 0%,rgba(9,11,17,0) 30%,rgba(9,11,17,0) 55%,rgba(9,11,17,.9) 75%)}
   .home-grid{grid-template-columns:1fr;grid-template-areas:"logo" "side" "slot" "dock";gap:12px}
   .logo{align-items:center;text-align:center}.logo p{display:none}
-  .title{font-size:clamp(54px,16vw,80px);transform-origin:center}
+  .title{font-size:clamp(40px,12.5vw,64px);transform-origin:center}
   .side{width:100%;justify-self:stretch}
   .top5{display:none}
   .car-slot{min-height:26vh}
   .dock{grid-template-columns:1fr 1fr;grid-template-areas:"mid mid" "l r";justify-content:stretch}
   .dock-mid{grid-area:mid}.sq.l{grid-area:l}.sq.r{grid-area:r}
   .sq{width:auto;height:74px;flex-direction:row}
-  .drive{font-size:36px}
-  .stage{background:linear-gradient(180deg,rgba(9,11,17,0) 0%,rgba(9,11,17,0) 30%,rgba(9,11,17,.92) 46%)}
-  .stage-grid{grid-template-columns:1fr;align-content:start}
-  .stage-grid .car-slot{min-height:34vh;order:-1}
+  .drive{font-size:30px}
+  .stage{background:linear-gradient(180deg,rgba(9,11,17,0) 0%,rgba(9,11,17,0) 22%,rgba(9,11,17,.92) 40%)}
+  .stage-grid{grid-template-columns:1fr;align-content:start;gap:14px}
+  .stage{align-items:flex-start}
+  .stage-grid{min-height:0;align-items:start}
+  .stage-grid>.col{align-self:start}
+  .pv-col{order:-1;min-height:0;padding:0}
+  .pv-col .car-slot{min-height:24vh;flex:none}
   .skins{max-height:none;overflow:visible}
+  .meter{grid-template-columns:70px 1fr 78px}
+  .pv-btn{font-size:17px}
+  .pv-head h2{font-size:20px}
 }
 }
 @media (max-width:640px){
   .cards{grid-template-columns:1fr;gap:8px}
-  .card{flex-direction:row;text-align:right;padding:10px 12px;gap:14px}
+  .card{flex-direction:row;text-align:left;padding:10px 12px;gap:14px}
   .card .dia{margin:4px 8px;flex:0 0 auto;width:52px;height:52px}
   .card .dia::before{width:40px;height:40px}
   .card .txt{align-items:flex-start;min-width:0;gap:4px}
@@ -244,7 +270,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 </style>
 
 <div id="app">
-  <canvas id="game" aria-label="העיר"></canvas>
+  <canvas id="game" aria-label="City"></canvas>
 
   <div id="hud" hidden>
     <div id="fx"></div><div id="dmg"></div>
@@ -252,61 +278,61 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
     <div class="hud-top">
       <div class="hud-group">
         <div id="clock">00:00</div>
-        <div class="chip"><small>רמה</small><span id="hLevel">1</span></div>
+        <div class="chip"><small>LVL</small><span id="hLevel">1</span></div>
       </div>
       <div class="hud-group">
-        <div class="chip"><small>הריגות</small><span id="hKills">0</span></div>
-        <div class="chip coin"><small>מטבעות</small><span id="hCoins">0</span></div>
-        <button id="pauseBtn" aria-label="השהיה">II</button>
+        <div class="chip"><small>Kills</small><span id="hKills">0</span></div>
+        <div class="chip coin"><small>Coins</small><span id="hCoins">0</span></div>
+        <button id="pauseBtn" aria-label="Pause">II</button>
       </div>
     </div>
     <div id="bossbar" hidden><div class="nm" id="bossName"></div><div class="bar"><div id="bossfill"></div></div></div>
     <div class="hud-bottom">
-      <div class="speedo" aria-label="מהירות">
+      <div class="speedo" aria-label="Speed">
         <svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="31" fill="rgba(13,16,24,.8)" stroke="#353b49" stroke-width="3"/>
           <path id="spdArc" d="M16.6 59.4 A31 31 0 1 1 57.4 59.4" fill="none" stroke="#ffb23f" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
-        <b id="spd">0</b><small>קמ״ש</small>
+        <b id="spd">0</b><small>km/h</small>
       </div>
       <div class="hpwrap"><div id="hpbar"><div id="hpfill"></div></div><div id="hptext">120 / 120</div></div>
     </div>
     <div id="banner"></div>
     <div id="bossArrow" hidden></div>
     <div id="joy" hidden><div id="joyKnob"></div></div>
-    <div class="move-hint" id="moveHint" hidden>שמים אצבע בכל מקום וגוררים לכיוון הנסיעה. רחוק יותר = מהר יותר</div>
+    <div class="move-hint" id="moveHint" hidden>Touch anywhere and drag where you want to go. Drag farther to go faster.</div>
   </div>
 
   <!-- HOME -->
   <section class="screen home" id="menu">
     <div class="home-grid">
       <div class="logo">
-        <span class="hazard">כביש 1 סגור · אזור נגוע</span>
-        <h1 class="title">נהג אחרון</h1>
-        <p>העיר סגורה במחסומים והמתים בכל רחוב. אין לאן לברוח, רק לנסוע ולשרוד עוד דקה.</p>
+        <span class="hazard">Route 1 closed · infected zone</span>
+        <h1 class="title">Last<br>Driver</h1>
+        <p>The city is walled off and the dead are in every street. There is no way out. Keep driving and survive one more minute.</p>
       </div>
       <div class="side">
         <div class="pills">
-          <div class="stk pill"><span>השיא שלך</span><b id="mBest">--:--</b></div>
-          <div class="stk pill coins"><span>מטבעות</span><b id="mCoins">0</b></div>
+          <div class="stk pill"><span>Your best</span><b id="mBest">--:--</b></div>
+          <div class="stk pill coins"><span>Coins</span><b id="mCoins">0</b></div>
         </div>
         <div class="stk top5">
-          <h3>הכי הרבה זמן בחיים <small id="miniState"></small></h3>
+          <h3>Longest alive <small id="miniState"></small></h3>
           <div id="miniBoard"></div>
         </div>
       </div>
       <div class="car-slot" data-car-slot></div>
       <div class="dock">
         <button class="stk sq r" id="shopBtn"><span class="badge" id="mCoinsBadge">0</span>
-          <svg viewBox="0 0 24 24" fill="#07080b"><path d="M21 6.5l-3.5 3.5-3-3L18 3.5A5 5 0 0 0 11 9.6L2.5 18a2 2 0 0 0 3 3L14 12.6A5 5 0 0 0 21 6.5z"/></svg>מוסך</button>
+          <svg viewBox="0 0 24 24" fill="#07080b"><path d="M21 6.5l-3.5 3.5-3-3L18 3.5A5 5 0 0 0 11 9.6L2.5 18a2 2 0 0 0 3 3L14 12.6A5 5 0 0 0 21 6.5z"/></svg>Garage</button>
         <div class="dock-mid">
           <div class="plate-field">
-            <label for="nick">הלוחית שלך היא השם בטבלה · <span id="mSkin">סדאן</span></label>
-            <div class="ilplate"><span class="strip">IL<i>ישראל</i></span><input id="nick" maxlength="14" autocomplete="off" spellcheck="false"></div>
+            <label for="nick">Your plate is your leaderboard name · <span id="mSkin">Family Sedan</span></label>
+            <div class="ilplate"><span class="strip">LD<i>ZONE 1</i></span><input id="nick" maxlength="14" autocomplete="off" spellcheck="false"></div>
           </div>
-          <button class="drive" id="playBtn">סע! <kbd>Enter</kbd></button>
-          <p class="how">גוררים לכל כיוון, וככל שמתרחקים מהמרכז נוסעים מהר יותר. במקלדת: חיצים או WASD</p>
+          <button class="drive" id="playBtn">Drive! <kbd>Enter</kbd></button>
+          <p class="how">Drag in any direction. The farther you drag, the faster you go. Keyboard: arrows or WASD.</p>
         </div>
         <button class="stk sq l" id="boardBtn">
-          <svg viewBox="0 0 24 24" fill="#07080b"><path d="M6 2h12v3h4v3a5 5 0 0 1-5 5h-.3A6 6 0 0 1 13 16v3h4v3H7v-3h4v-3a6 6 0 0 1-3.7-3H7a5 5 0 0 1-5-5V5h4zm0 5H4v1a3 3 0 0 0 2 2.8zm12 0v3.8A3 3 0 0 0 20 8V7z"/></svg>שיאים</button>
+          <svg viewBox="0 0 24 24" fill="#07080b"><path d="M6 2h12v3h4v3a5 5 0 0 1-5 5h-.3A6 6 0 0 1 13 16v3h4v3H7v-3h4v-3a6 6 0 0 1-3.7-3H7a5 5 0 0 1-5-5V5h4zm0 5H4v1a3 3 0 0 0 2 2.8zm12 0v3.8A3 3 0 0 0 20 8V7z"/></svg>Scores</button>
       </div>
     </div>
   </section>
@@ -315,32 +341,34 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   <section class="screen stage" id="shop" hidden>
     <div class="stage-grid">
       <div class="col">
-        <div class="head"><h2>מוסך</h2><div class="chip coin" style="font-size:18px"><small>מטבעות</small><span id="sCoins">0</span></div></div>
-        <p class="hint">בוחרים רכב כדי לראות אותו מסתובב על הבמה. הסקינים קוסמטיים בלבד, כך שהטבלה נשארת הוגנת.</p>
+        <div class="head"><h2>Garage</h2><div class="chip coin" style="font-size:18px"><small>Coins</small><span id="sCoins">0</span></div></div>
         <div class="skins" id="skinList"></div>
-        <div class="plate" style="display:flex;flex-direction:column;gap:10px">
-          <div class="preview-name" id="pvName"></div>
-          <button class="btn go" id="pvBtn">לבחור</button>
-        </div>
-        <button class="btn" id="shopBack">חזרה</button>
+        <button class="btn" id="shopBack">Back</button>
       </div>
-      <div class="car-slot" data-car-slot></div>
+      <div class="pv-col">
+        <div class="car-slot" data-car-slot></div>
+        <div class="stk pv-card">
+          <div class="pv-head"><span class="pv-tag" id="pvTag">Preview</span><h2 id="pvName"></h2></div>
+          <div class="meters" id="meters"></div>
+          <button class="drive pv-btn" id="pvBtn">Select</button>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- BOARD -->
   <section class="screen" id="boardScr" hidden>
     <div class="panel">
-      <div class="head"><h2>טבלת שיאים</h2><span class="sign">כל השחקנים · זמן הישרדות</span></div>
+      <div class="head"><h2>Leaderboard</h2><span class="sign">All players · survival time</span></div>
       <div class="plate"><div id="fullBoard"></div></div>
-      <button class="btn" id="boardBack">חזרה</button>
+      <button class="btn" id="boardBack">Back</button>
     </div>
   </section>
 
   <!-- LEVEL UP -->
   <section class="screen clear" id="levelup" hidden>
     <div class="panel" style="width:min(860px,100%);align-items:center">
-      <div class="lv-title"><span class="sign" id="lvSign">שדרוג</span><h2 id="lvTitle">רמה 2</h2></div>
+      <div class="lv-title"><span class="sign" id="lvSign">Upgrade</span><h2 id="lvTitle">Level 2</h2></div>
       <div class="cards" id="cards"></div>
     </div>
   </section>
@@ -348,12 +376,12 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   <!-- PAUSE -->
   <section class="screen clear" id="pause" hidden>
     <div class="panel" style="width:min(420px,100%)">
-      <div class="lv-title"><h2>הפסקה</h2></div>
+      <div class="lv-title"><h2>Paused</h2></div>
       <div class="plate" style="display:flex;flex-direction:column;gap:12px">
         <div id="pauseBuild" class="hint"></div>
-        <button class="btn go" id="resumeBtn">ממשיכים</button>
-        <button class="btn" id="muteToggle">צליל: פועל</button>
-        <button class="btn" id="quitBtn">יציאה לתפריט</button>
+        <button class="btn go" id="resumeBtn">Resume</button>
+        <button class="btn" id="muteToggle">Sound: on</button>
+        <button class="btn" id="quitBtn">Quit to menu</button>
       </div>
     </div>
   </section>
@@ -361,17 +389,17 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   <!-- GAME OVER -->
   <section class="screen" id="over" hidden>
     <div class="panel" style="width:min(480px,100%)">
-      <div class="over-title"><span class="sign">הרכב הושבת</span><h2>נגמר הדלק לחיים</h2></div>
+      <div class="over-title"><span class="sign">Car wrecked</span><h2>End of the road</h2></div>
       <div class="plate" style="display:flex;flex-direction:column;gap:14px;align-items:stretch">
-        <div style="text-align:center"><div class="hint">זמן הישרדות</div><div class="over-time" id="oTime">00:00</div></div>
+        <div style="text-align:center"><div class="hint">Survived</div><div class="over-time" id="oTime">00:00</div></div>
         <div class="stats">
-          <div class="stat"><span>הריגות</span><b id="oKills">0</b></div>
-          <div class="stat"><span>רמה</span><b id="oLevel">1</b></div>
-          <div class="stat"><span>מטבעות</span><b class="coin" id="oCoins" dir="ltr">+0</b></div>
+          <div class="stat"><span>Kills</span><b id="oKills">0</b></div>
+          <div class="stat"><span>Level</span><b id="oLevel">1</b></div>
+          <div class="stat"><span>Coins</span><b class="coin" id="oCoins">+0</b></div>
         </div>
         <p class="save-note" id="oNote"></p>
-        <button class="btn go" id="againBtn">עוד סיבוב</button>
-        <div class="row"><button class="btn" id="overShop">מוסך</button><button class="btn" id="overMenu">תפריט</button></div>
+        <button class="btn go" id="againBtn">Drive again</button>
+        <div class="row"><button class="btn" id="overShop">Garage</button><button class="btn" id="overMenu">Menu</button></div>
       </div>
     </div>
   </section>
@@ -393,7 +421,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const angDiff=(a,b)=>{let d=b-a;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d};
 const fmtTime=s=>{s=Math.floor(s||0);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-document.documentElement.lang='he';
+document.documentElement.lang='en';
 const cv=$('#game');
 let W=window.innerWidth,H=window.innerHeight;
 const COARSE=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
@@ -486,14 +514,14 @@ function sfx(name){
    skins & upgrades
    ========================================================= */
 const SKINS=[
-  {id:'sedan',name:'סדאן משפחתית',price:0,body:'#56789c',roof:'#41607f',trim:'#26333f'},
-  {id:'taxi',name:'מונית ספיישל',price:250,body:'#f2c230',roof:'#dcae22',trim:'#1d1d1d',taxi:true},
-  {id:'police',name:'ניידת',price:500,body:'#eef0f2',roof:'#22305a',trim:'#22305a',police:true},
-  {id:'pickup',name:'טנדר חקלאי',price:800,body:'#8a5530',roof:'#6e4224',trim:'#2d1d12',bed:true},
-  {id:'sport',name:'מכונית ספורט',price:1200,body:'#c8202c',roof:'#9c1520',trim:'#1a1a1a',stripe:'#f4f4f4',spoiler:true},
-  {id:'icecream',name:'משאית גלידה',price:1800,body:'#f6d2e2',roof:'#ffffff',trim:'#7a4e63',long:true,cone:true},
-  {id:'army',name:'ג׳יפ צבאי',price:2600,body:'#5a6e3c',roof:'#45552d',trim:'#2c3520',camo:true},
-  {id:'gold',name:'זהב טהור',price:4000,body:'#e8b84a',roof:'#c99426',trim:'#6b4b10',shine:true},
+  {id:'sedan',name:'Family Sedan',price:0,hp:120,speed:225,ram:1,body:'#56789c',roof:'#41607f',trim:'#26333f'},
+  {id:'taxi',name:'Night Taxi',price:250,hp:110,speed:255,ram:.9,body:'#f2c230',roof:'#dcae22',trim:'#1d1d1d',taxi:true},
+  {id:'police',name:'Patrol Car',price:500,hp:140,speed:245,ram:1.15,body:'#eef0f2',roof:'#22305a',trim:'#22305a',police:true},
+  {id:'pickup',name:'Farm Pickup',price:800,hp:175,speed:210,ram:1.45,body:'#8a5530',roof:'#6e4224',trim:'#2d1d12',bed:true},
+  {id:'sport',name:'Sports Coupe',price:1200,hp:100,speed:300,ram:1,body:'#c8202c',roof:'#9c1520',trim:'#1a1a1a',stripe:'#f4f4f4',spoiler:true},
+  {id:'icecream',name:'Ice Cream Truck',price:1800,hp:230,speed:195,ram:1.65,body:'#f6d2e2',roof:'#ffffff',trim:'#7a4e63',long:true,cone:true},
+  {id:'army',name:'Army Jeep',price:2600,hp:240,speed:240,ram:1.8,body:'#5a6e3c',roof:'#45552d',trim:'#2c3520',camo:true},
+  {id:'gold',name:'Solid Gold',price:4000,hp:210,speed:285,ram:1.75,body:'#e8b84a',roof:'#c99426',trim:'#6b4b10',shine:true},
 ];
 const skinById=id=>SKINS.find(s=>s.id===id)||SKINS[0];
 
@@ -517,25 +545,25 @@ const ICON={
   cash:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5" fill="#ffb23f"/>',
 };
 const UPG=[
-  {id:'ram',name:'פגוש משוריין',tag:'דריסה',max:5,desc:l=>`נזק דריסה +35% (סה״כ +${35*l}%)`},
-  {id:'turret',name:'צריח אוטומטי',tag:'נשק',max:5,desc:l=>l===1?'יורה על הזומבי הקרוב ביותר':l===3?'קנה כפול':l===5?'כדורים חודרים':'קצב ונזק גבוהים יותר'},
-  {id:'saws',name:'להבים מסתובבים',tag:'נשק',max:5,desc:l=>l<=4?`${l} מסורים סביב הרכב`:'מסורים גדולים וחדים יותר'},
-  {id:'mines',name:'מוקשים',tag:'נשק',max:5,desc:l=>l===1?'מפיל מוקש מאחור כל כמה שניות':'מוקשים תכופים וחזקים יותר'},
-  {id:'rockets',name:'טילים מונחים',tag:'נשק',max:5,desc:l=>l===1?'טיל ננעל על המטרה הקשוחה ביותר':l===4?'שני טילים בכל צרור':'פיצוץ רחב וחזק יותר'},
-  {id:'tesla',name:'סליל טסלה',tag:'נשק',max:5,desc:l=>`ברק שקופץ בין ${2+l} זומבים`},
-  {id:'fire',name:'שובל אש',tag:'נשק',max:5,desc:l=>l===1?'הצמיגים משאירים אש בוערת':'אש חמה וארוכה יותר'},
-  {id:'shock',name:'גל הלם',tag:'נשק',max:5,desc:l=>l===1?'פולס שהודף ופוגע סביב הרכב':'פולס תכוף ורחב יותר'},
-  {id:'nitro',name:'ניטרו',tag:'רכב',max:5,desc:l=>`מהירות מרבית +12%, תאוצה +15%`},
-  {id:'armor',name:'שריון',tag:'רכב',max:5,desc:l=>`הפחתת נזק ${10*l}%`},
-  {id:'engine',name:'שלדה מחוזקת',tag:'רכב',max:5,desc:l=>'+25 חיים מרביים ותיקון מלא של 25'},
-  {id:'repair',name:'תיקון עצמי',tag:'רכב',max:5,desc:l=>`מחזיר ${(0.6*l).toFixed(1)} חיים בשנייה`},
-  {id:'magnet',name:'מגנט',tag:'איסוף',max:5,desc:l=>'טווח איסוף +40%'},
-  {id:'learn',name:'לומד מהר',tag:'איסוף',max:5,desc:l=>'ניסיון +15%'},
-  {id:'luck',name:'מזל של נהג',tag:'איסוף',max:5,desc:l=>'יותר מטבעות וערכות עזרה'},
+  {id:'ram',name:'Bull Bar',tag:'Ram',max:5,desc:l=>`Ram damage +35% (total +${35*l}%)`},
+  {id:'turret',name:'Auto Turret',tag:'Weapon',max:5,desc:l=>l===1?'Shoots the nearest zombie':l===3?'Twin barrels':l===5?'Bullets pierce through':'Faster fire, more damage'},
+  {id:'saws',name:'Spinning Saws',tag:'Weapon',max:5,desc:l=>l<=4?`${l} saw${l>1?'s':''} circling the car`:'Bigger, sharper saws'},
+  {id:'mines',name:'Mine Dropper',tag:'Weapon',max:5,desc:l=>l===1?'Drops a mine behind you every few seconds':'More frequent, stronger mines'},
+  {id:'rockets',name:'Homing Rockets',tag:'Weapon',max:5,desc:l=>l===1?'Locks onto the toughest target':l===4?'Two rockets per volley':'Wider, stronger blasts'},
+  {id:'tesla',name:'Tesla Coil',tag:'Weapon',max:5,desc:l=>`Lightning that chains through ${2+l} zombies`},
+  {id:'fire',name:'Fire Trail',tag:'Weapon',max:5,desc:l=>l===1?'Your tires leave burning fuel':'Hotter, longer-lasting fire'},
+  {id:'shock',name:'Shockwave',tag:'Weapon',max:5,desc:l=>l===1?'A pulse that knocks back everything nearby':'More frequent, wider pulse'},
+  {id:'nitro',name:'Nitro',tag:'Car',max:5,desc:l=>'Top speed +12%, acceleration +15%'},
+  {id:'armor',name:'Armor Plates',tag:'Car',max:5,desc:l=>`Take ${10*l}% less damage`},
+  {id:'engine',name:'Reinforced Frame',tag:'Car',max:5,desc:l=>'+25 max health, and repairs 25'},
+  {id:'repair',name:'Self Repair',tag:'Car',max:5,desc:l=>`Restores ${(0.6*l).toFixed(1)} health per second`},
+  {id:'magnet',name:'Magnet',tag:'Loot',max:5,desc:l=>'Pickup range +40%'},
+  {id:'learn',name:'Quick Learner',tag:'Loot',max:5,desc:l=>'XP +15%'},
+  {id:'luck',name:'Driver\'s Luck',tag:'Loot',max:5,desc:l=>'More coins and repair kits'},
 ];
 const EXTRA=[
-  {id:'_heal',name:'ערכת תיקון',tag:'מיידי',icon:'heal',desc:()=>'מתקן 40 חיים'},
-  {id:'_cash',name:'שקית מזומנים',tag:'מיידי',icon:'cash',desc:()=>'+25 מטבעות'},
+  {id:'_heal',name:'Repair Kit',tag:'Instant',icon:'heal',desc:()=>'Restores 40 health'},
+  {id:'_cash',name:'Bag of Cash',tag:'Instant',icon:'cash',desc:()=>'+25 coins'},
 ];
 
 /* =========================================================
@@ -549,9 +577,9 @@ const ZT={
   brute:{hp:160,speed:42,r:22,dmg:18,mass:6,xp:6,col:'#5f4f73',head:'#9a88a8'},
 };
 const BOSS={
-  butcher:{name:'הקצב',hp:1000,speed:74,r:36,dmg:26,col:'#8a3a36',head:'#c98070'},
-  brood:{name:'אם הכוורת',hp:1200,speed:46,r:40,dmg:20,col:'#6d7a33',head:'#b6c46a'},
-  giant:{name:'הענק הרעיל',hp:1500,speed:50,r:44,dmg:30,col:'#356a57',head:'#7fc092'},
+  butcher:{name:'The Butcher',hp:1000,speed:74,r:36,dmg:26,col:'#8a3a36',head:'#c98070'},
+  brood:{name:'Brood Mother',hp:1200,speed:46,r:40,dmg:20,col:'#6d7a33',head:'#b6c46a'},
+  giant:{name:'Toxic Giant',hp:1500,speed:50,r:44,dmg:30,col:'#356a57',head:'#7fc092'},
 };
 const BOSS_ORDER=['butcher','brood','giant'];
 
@@ -562,11 +590,12 @@ const input={keys:{},joy:null};
 
 function newGame(){
   genCity();
-  const c={x:CENTER,y:CENTER,a:-Math.PI/2,vx:0,vy:0,hp:120,r:17,turretA:0,skin:skinById(Profile.data.skin)};
+  const c={x:CENTER,y:CENTER,a:-Math.PI/2,vx:0,vy:0,hp:0,r:17,turretA:0,skin:skinById(Profile.data.skin)};
   G={t:0,car:c,z:[],pick:[],bul:[],rock:[],acid:[],mines:[],fires:[],puddles:[],bolts:[],rings:[],parts:[],blood:[],skids:[],
      level:1,xp:0,kills:0,coins:0,L:{},cd:{},spawnAcc:0,nextHorde:55,nextBoss:120,bossIdx:0,boss:null,pending:0,pendingChest:0,
      dmgFlash:0,dead:false,deadT:0,flow:null,flowTile:-1,flowT:0,lastSkid:null,fireDrop:0,sawA:0,banner:null};
   for(const u of UPG)G.L[u.id]=0;
+  c.hp=c.skin.hp;
   G.L.turret=1; // starter weapon
   cam.x=c.x;cam.y=c.y;
   build3DCity();
@@ -577,8 +606,8 @@ function newGame(){
 function stats(){
   const L=G.L;
   return{
-    maxSpeed:330*(1+.12*L.nitro),accel:460*(1+.15*L.nitro),maxHp:120+25*L.engine,armor:Math.min(.5,.1*L.armor),regen:.6*L.repair,
-    magnet:95*(1+.4*L.magnet),xpMul:1+.15*L.learn,ram:1+.35*L.ram,coin:.06*(1+.4*L.luck),med:.012*(1+.4*L.luck)
+    maxSpeed:G.car.skin.speed*(1+.12*L.nitro),accel:G.car.skin.speed*1.3*(1+.15*L.nitro),maxHp:G.car.skin.hp+25*L.engine,armor:Math.min(.5,.1*L.armor),regen:.6*L.repair,
+    magnet:95*(1+.4*L.magnet),xpMul:1+.15*L.learn,ram:G.car.skin.ram*(1+.35*L.ram),coin:.06*(1+.4*L.luck),med:.012*(1+.4*L.luck)
   };
 }
 let S=null;
@@ -664,7 +693,7 @@ function spawnBoss(){
   const m=(1+G.t/240)*(1+cycle*.6);
   const z={type:'boss',boss:key,name:B.name,x:p.x,y:p.y,kx:0,ky:0,r:B.r,hp:B.hp*m,maxHp:B.hp*m,speed:B.speed,dmg:B.dmg*(1+G.t/500),mass:30,xp:40,col:B.col,head:B.head,
     atk:0,flash:0,a:0,saw:0,fire:0,ram:0,shoot:2,tm:3,st:'walk',wob:0,dead:false};
-  G.z.push(z);G.boss=z;banner('מיני-בוס: '+B.name,key==='butcher'?'נזהרים מהזינוק':key==='brood'?'היא לא מגיעה לבד':'אל תעמדו בשלוליות');sfx('boss');
+  G.z.push(z);G.boss=z;banner('Mini-boss: '+B.name,key==='butcher'?'Watch out for the charge':key==='brood'?'She never comes alone':'Stay out of the puddles');sfx('boss');
 }
 function pickType(){
   const t=G.t;const w=[['walker',10]];
@@ -683,7 +712,7 @@ function updateSpawns(dt){
     const a0=Math.random()*Math.PI*2;
     for(let i=0;i<n;i++){const a=a0+(i/n)*Math.PI*1.2;const vr=viewEdge(a)+60;const p={x:c.x+Math.cos(a)*vr,y:c.y+Math.sin(a)*vr};const tx=Math.floor(p.x/TILE),ty=Math.floor(p.y/TILE);
       if(p.x>20&&p.y>20&&p.x<WORLD-20&&p.y<WORLD-20&&!solidT(tx,ty)&&flowDist[ty*MAPN+tx]>=0)spawnZombie(t>60&&i%3===0?'runner':'walker',p)}
-    banner('עדר מתקרב!',null);
+    banner('Horde incoming!',null);
   }
   if(t>=G.nextBoss){G.nextBoss+=120;spawnBoss()}
 }
@@ -715,7 +744,7 @@ function killZ(z){
   if(z.type==='boss'){
     for(let i=0;i<14;i++)dropPick('coin',z.x,z.y,3,true);
     for(let i=0;i<10;i++)dropPick('xp',z.x,z.y,5,true);
-    dropPick('chest',z.x,z.y,1,false);G.boss=null;banner(z.name+' הובס','תיבת אספקה נפלה');explode(z.x,z.y,90,0,0,'#ff7a5a');
+    dropPick('chest',z.x,z.y,1,false);G.boss=null;banner(z.name+' down','A supply crate dropped');explode(z.x,z.y,90,0,0,'#ff7a5a');
   }else{
     dropPick('xp',z.x,z.y,xp,false);
     if(Math.random()<S.coin*(z.type==='brute'?4:1))dropPick('coin',z.x,z.y,z.type==='brute'?3:1,false);
@@ -836,9 +865,9 @@ function updateZombies(dt){
       const nx=-dx/d,ny=-dy/d; // from car to zombie
       const closing=c.vx*(-nx)+c.vy*(-ny); // negative when car moves toward zombie
       const impact=Math.max(0,-closing);
-      if(impact>120&&z.ram<=0){
+      if(impact>100&&z.ram<=0){
         z.ram=.28;
-        const dmg=18*S.ram*Math.pow(impact/330,1.3);
+        const dmg=18*S.ram*Math.pow(impact/260,1.3);
         const kb=impact*.9;
         if(z.type==='boss'){hurt(z,dmg*.6,0,0);c.vx=-c.vx*.45;c.vy=-c.vy*.45;shake(6);
           if(z.atk<=0){z.atk=.9;hurtCar(z.dmg*.6)}}
@@ -1292,6 +1321,25 @@ function ensureCar(sk){
   carRig=buildCar(sk);carSkinId=sk.id;scene.add(carRig.g);
 }
 
+/* ---------- garage thumbnails: each car rendered once into an image ---------- */
+const Thumbs={};
+function makeThumbs(){
+  if(!renderer||Thumbs._done)return;Thumbs._done=true;
+  try{
+    const w=240,h=160;const rt=new THREE.WebGLRenderTarget(w,h);
+    const sc=new THREE.Scene();sc.background=new THREE.Color('#1c2130');
+    sc.add(new THREE.HemisphereLight('#d6deff','#3a2e20',1.05));const dl=new THREE.DirectionalLight('#ffffff',.75);dl.position.set(60,120,90);sc.add(dl);
+    const pad=new THREE.Mesh(new THREE.CircleGeometry(46,40).rotateX(-Math.PI/2),lam('#343a48'));sc.add(pad);ink(pad,.8);
+    const cam=new THREE.PerspectiveCamera(30,w/h,1,1000);cam.position.set(78,52,92);cam.lookAt(0,11,0);
+    const buf=new Uint8Array(w*h*4);const cvs=document.createElement('canvas');cvs.width=w;cvs.height=h;const g=cvs.getContext('2d');const img=g.createImageData(w,h);
+    for(const sk of SKINS){const rig=buildCar(sk);rig.g.rotation.y=.35;sc.add(rig.g);
+      renderer.setRenderTarget(rt);renderer.render(sc,cam);renderer.readRenderTargetPixels(rt,0,0,w,h,buf);
+      for(let y=0;y<h;y++)img.data.set(buf.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);
+      g.putImageData(img,0,0);Thumbs[sk.id]=cvs.toDataURL('image/png');sc.remove(rig.g);disposeGroup(rig.g)}
+    renderer.setRenderTarget(null);rt.dispose();
+  }catch(e){renderer.setRenderTarget(null)}
+}
+
 /* ---------- per frame ---------- */
 function slotRect(){for(const id of ['menu','shop']){const s=$('#'+id);if(s&&!s.hidden){const e=s.querySelector('[data-car-slot]');if(e){const r=e.getBoundingClientRect();if(r.width>20&&r.height>20)return r}}}return null}
 const fadeSamples=[];
@@ -1408,19 +1456,19 @@ function openChoice(){
   if(chest)G.pendingChest--;else G.pending--;
   state='levelup';
   const avail=UPG.filter(u=>G.L[u.id]<u.max);
-  const pool=[];for(const u of avail){const owned=G.L[u.id]>0;const isWeapon=u.tag==='נשק';const nW=UPG.filter(x=>x.tag==='נשק'&&G.L[x.id]>0).length;
+  const pool=[];for(const u of avail){const owned=G.L[u.id]>0;const isWeapon=u.tag==='Weapon';const nW=UPG.filter(x=>x.tag==='Weapon'&&G.L[x.id]>0).length;
     let w=owned?3:isWeapon&&nW<2?3:1.6;if(isWeapon&&!owned&&nW>=5)w=.3;pool.push([u,w])}
   choiceOpts=[];
   while(choiceOpts.length<3&&pool.length){let s=0;for(const p of pool)s+=p[1];let r=Math.random()*s;let idx=0;for(;idx<pool.length;idx++){r-=pool[idx][1];if(r<=0)break}idx=Math.min(idx,pool.length-1);choiceOpts.push(pool[idx][0]);pool.splice(idx,1)}
   for(const e of EXTRA)if(choiceOpts.length<3)choiceOpts.push(e);
-  $('#lvSign').textContent=chest?'תיבת אספקה':'שדרוג';
-  $('#lvTitle').textContent=chest?'בחרו פרס':'רמה '+G.level;
+  $('#lvSign').textContent=chest?'Supply crate':'Upgrade';
+  $('#lvTitle').textContent=chest?'Pick a reward':'Level '+G.level;
   const wrap=$('#cards');wrap.innerHTML='';
   choiceOpts.forEach((u,i)=>{
     const lv=G.L[u.id]||0;const b=document.createElement('button');b.className='card';b.id='card'+i;
     const pips=u.max?'<div class="pips">'+Array.from({length:u.max},(_,k)=>`<i class="${k<=lv?'f':''}"></i>`).join('')+'</div>':'';
     b.innerHTML=`<div class="dia"><svg viewBox="0 0 24 24" fill="#1a1408">${ICON[u.icon||u.id]}</svg></div>
-      <div class="txt"><span class="tag">${u.tag}${u.max?(lv?' · שלב '+(lv+1):' · חדש'):''}</span><h3>${u.name}</h3><p>${u.desc(lv+1)}</p>${pips}</div><span class="key">מקש ${i+1}</span>`;
+      <div class="txt"><span class="tag">${u.tag}${u.max?(lv?' · tier '+(lv+1):' · new'):''}</span><h3>${u.name}</h3><p>${u.desc(lv+1)}</p>${pips}</div><span class="key">Key ${i+1}</span>`;
     b.addEventListener('click',()=>choose(i));wrap.appendChild(b);
   });
   showScreen('levelup');sfx('level');
@@ -1443,7 +1491,7 @@ const Profile={
   data:Object.assign({coins:0,owned:['sedan'],skin:'sedan',name:'',best:0},LS.get('ld.profile',{})),
   save(){LS.set('ld.profile',this.data);Net.saveProfile()},
 };
-if(!Profile.data.name)Profile.data.name='נהג '+randi(100,999);
+if(!Profile.data.name)Profile.data.name='DRIVER '+randi(100,999);
 if(!Profile.data.owned.includes('sedan'))Profile.data.owned.push('sedan');
 
 const Net={db:null,user:null,uid:null,canWrite:null,board:[],status:'loading',timer:null,saving:Promise.resolve(),
@@ -1476,32 +1524,32 @@ const Net={db:null,user:null,uid:null,canWrite:null,board:[],status:'loading',ti
     this.saving=this.saving.then(()=>this.db.doc('data/users/'+this.uid+'/profile').set(body)).catch(()=>{});
   },
   async submit(run){
-    if(!this.db)return{ok:false,msg:'הטבלה הגלובלית לא זמינה בתצוגה הזו. השיא נשמר אצלך.'};
-    if(!this.uid)return{ok:false,msg:'צריך להתחבר כדי להופיע בטבלה הגלובלית.'};
-    if(this.canWrite===false)return{ok:false,msg:'יש לך הרשאת צפייה בלבד, אז השיא לא נשלח לטבלה.'};
+    if(!this.db)return{ok:false,msg:'The global leaderboard is not available in this view. Your best is saved on this device.'};
+    if(!this.uid)return{ok:false,msg:'Sign in to appear on the global leaderboard.'};
+    if(this.canWrite===false)return{ok:false,msg:'You have view-only access, so your score was not sent to the leaderboard.'};
     const mine=this.board.find(r=>r.id===this.uid);let prev=mine?mine.time:0;
     if(!mine){try{const s=await this.db.doc('scores/'+this.uid).get();if(s.exists)prev=s.data().time||0}catch(e){}}
-    if(run.time<=prev)return{ok:true,msg:'השיא שלך בטבלה: '+fmtTime(prev)};
+    if(run.time<=prev)return{ok:true,msg:'Your leaderboard best: '+fmtTime(prev)};
     try{await this.db.doc('scores/'+this.uid).set({name:Profile.data.name,time:Math.round(run.time*10)/10,kills:run.kills,level:run.level,skin:Profile.data.skin,at:Date.now()});
-      return{ok:true,good:true,msg:'שיא חדש נרשם בטבלה הגלובלית!'}}
-    catch(e){if(e&&e.code==='invalid_argument')this.canWrite=false;return{ok:false,msg:'לא הצלחנו לשמור את השיא. הוא נשמר אצלך.'}}
+      return{ok:true,good:true,msg:'New record on the global leaderboard!'}}
+    catch(e){if(e&&e.code==='invalid_argument')this.canWrite=false;return{ok:false,msg:'Could not save to the leaderboard. Your best is saved on this device.'}}
   }
 };
 
 function boardHTML(limit){
   const st=Net.status;
-  if(st==='offline')return '<div class="board-empty">הטבלה הגלובלית זמינה כשפותחים את המשחק בתוך Claude.<br>השיא האישי נשמר בדפדפן.</div>';
-  if(st==='error')return '<div class="board-empty">לא הצלחנו לטעון את הטבלה כרגע.</div>';
-  if(st==='loading')return '<div class="board-empty">טוען את טבלת השיאים…</div>';
-  if(st==='slow'&&!Net.board.length)return '<div class="board-empty">הטבלה עדיין לא נטענה. אפשר לשחק בינתיים.</div>';
+  if(st==='offline')return '<div class="board-empty">The global leaderboard works when the game is opened inside Claude.<br>Your personal best is saved in this browser.</div>';
+  if(st==='error')return '<div class="board-empty">Could not load the leaderboard right now.</div>';
+  if(st==='loading')return '<div class="board-empty">Loading the leaderboard…</div>';
+  if(st==='slow'&&!Net.board.length)return '<div class="board-empty">The leaderboard has not loaded yet. You can play in the meantime.</div>';
   const rows=Net.board.slice(0,limit);
-  if(!rows.length)return '<div class="board-empty">עוד אין אף שיא. הנהג הראשון שישרוד נכנס לראש הטבלה.</div>';
+  if(!rows.length)return '<div class="board-empty">No scores yet. The first driver to survive takes the top spot.</div>';
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  return '<ol class="board">'+rows.map((r,i)=>`<li class="${r.id===Net.uid?'me':''}"><span class="rk">${i+1}</span><span class="nm">${esc(String(r.name||'נהג').slice(0,16))}</span><span class="kl">${(r.kills|0)} הריגות</span><span class="tm">${fmtTime(r.time)}</span></li>`).join('')+'</ol>';
+  return '<ol class="board">'+rows.map((r,i)=>`<li class="${r.id===Net.uid?'me':''}"><span class="rk">${i+1}</span><span class="nm">${esc(String(r.name||'Driver').slice(0,16))}</span><span class="kl">${(r.kills|0)} kills</span><span class="tm">${fmtTime(r.time)}</span></li>`).join('')+'</ol>';
 }
 function renderBoards(){
   $('#miniBoard').innerHTML=boardHTML(5);$('#fullBoard').innerHTML=boardHTML(50);
-  $('#miniState').textContent=Net.status==='ok'?'גלובלי · מתעדכן חי':'';
+  $('#miniState').textContent=Net.status==='ok'?'live':'';
 }
 
 
@@ -1512,26 +1560,48 @@ const SCREENS=['menu','shop','boardScr','levelup','pause','over'];
 function showScreen(id){for(const s of SCREENS)$('#'+s).hidden=s!==id;$('#hud').hidden=!(state==='play'||state==='levelup'||state==='pause'||state==='dead');
   if(state!=='play'){input.joy=null;$('#joy').hidden=true}}
 function refreshMenu(){
-  const d=Profile.data;$('#mBest').textContent=d.best?fmtTime(d.best):'--:--';$('#mCoins').textContent=d.coins;$('#mCoinsBadge').textContent=d.coins;$('#mSkin').textContent='ברכב: '+skinById(d.skin).name;
+  const d=Profile.data;$('#mBest').textContent=d.best?fmtTime(d.best):'--:--';$('#mCoins').textContent=d.coins;$('#mCoinsBadge').textContent=d.coins;$('#mSkin').textContent='Car: '+skinById(d.skin).name;
   if(document.activeElement!==$('#nick'))$('#nick').value=d.name;$('#sCoins').textContent=d.coins;
 }
 const Shop={preview:null};
+const METERS=[
+  {k:'hp',label:'Health',min:80,max:260,fmt:v=>v+' HP',d:v=>(v>0?'+':'')+v},
+  {k:'speed',label:'Speed',min:170,max:310,fmt:v=>Math.round(v*.4)+' km/h',d:v=>(v>0?'+':'')+Math.round(v*.4)},
+  {k:'ram',label:'Ram power',min:.7,max:2,fmt:v=>'×'+v.toFixed(2),d:v=>(v>0?'+':'')+v.toFixed(2)},
+];
+const segOf=(m,v)=>clamp(Math.round((v-m.min)/(m.max-m.min)*9)+1,1,10);
 function renderShop(){
+  makeThumbs();
   const d=Profile.data;if(!Shop.preview)Shop.preview=d.skin;const list=$('#skinList');list.innerHTML='';
   for(const sk of SKINS){
     const owned=d.owned.includes(sk.id),on=d.skin===sk.id;
     const b=document.createElement('button');b.className='skin'+(Shop.preview===sk.id?' sel':'');b.id='skin-'+sk.id;
-    const sw=document.createElement('span');sw.className='sw';for(const c of [sk.body,sk.roof,sk.trim]){const i=document.createElement('i');i.style.background=c;sw.appendChild(i)}
+    let pic;if(Thumbs[sk.id]){pic=document.createElement('img');pic.src=Thumbs[sk.id];pic.alt=''}else{pic=document.createElement('span');pic.className='ph';pic.style.background=`linear-gradient(135deg,${sk.body},${sk.trim})`}
+    const sub=document.createElement('span');sub.className='sub';
     const h=document.createElement('h3');h.textContent=sk.name;
-    const st=document.createElement('span');st.className='st '+(on?'on':owned?'own':'price');st.textContent=on?'בשימוש':owned?'בבעלותך':sk.price+' מטבעות';
-    b.append(sw,h,st);b.onclick=()=>{Shop.preview=sk.id;renderShop()};list.appendChild(b);
+    const mini=document.createElement('span');mini.className='mini';mini.textContent=`${sk.hp} HP · ${Math.round(sk.speed*.4)} km/h · ×${sk.ram.toFixed(2)} ram`;
+    sub.append(h,mini);
+    const st=document.createElement('span');st.className='st '+(on?'on':owned?'own':'price');st.textContent=on?'Driving':owned?'Owned':sk.price+' coins';
+    b.append(pic,sub,st);b.onclick=()=>{Shop.preview=sk.id;renderShop()};list.appendChild(b);
   }
-  const sk=skinById(Shop.preview);const owned=d.owned.includes(sk.id),on=d.skin===sk.id;
-  $('#pvName').textContent=sk.name;const btn=$('#pvBtn');btn.disabled=false;btn.style.opacity='';
-  if(on){btn.textContent='זה הרכב שלך';btn.disabled=true;btn.style.opacity='.55'}
-  else if(owned)btn.textContent='לנהוג בו';
-  else if(d.coins>=sk.price)btn.textContent=`קנייה ב-${sk.price} מטבעות`;
-  else{btn.textContent=`חסרים ${sk.price-d.coins} מטבעות`;btn.disabled=true;btn.style.opacity='.55'}
+  const sk=skinById(Shop.preview),cur=skinById(d.skin);const owned=d.owned.includes(sk.id),on=d.skin===sk.id;
+  $('#pvName').textContent=sk.name;$('#pvTag').textContent=on?'Your car':'Preview · compared with your '+cur.name;
+  const box=$('#meters');box.innerHTML='';
+  for(const m of METERS){
+    const v=sk[m.k],c=cur[m.k];const sv=segOf(m,v),sc=segOf(m,c);
+    const row=document.createElement('div');row.className='meter';
+    const lab=document.createElement('span');lab.textContent=m.label;
+    const segs=document.createElement('div');segs.className='segs';
+    for(let i=1;i<=10;i++){const s=document.createElement('i');if(i<=Math.min(sv,sc))s.className='f';else if(i<=sv)s.className='up';else if(i<=sc)s.className='down';segs.appendChild(s)}
+    const val=document.createElement('b');val.textContent=m.fmt(v);
+    if(!on&&v!==c){const sm=document.createElement('small');sm.textContent=m.d(m.k==='ram'?+(v-c).toFixed(2):v-c)+' vs yours';sm.style.color=v>c?'#2f8a3c':'#b0342c';val.appendChild(sm)}
+    row.append(lab,segs,val);box.appendChild(row);
+  }
+  const btn=$('#pvBtn');btn.disabled=false;
+  if(on){btn.textContent='Driving this one';btn.disabled=true}
+  else if(owned)btn.textContent='Drive this car';
+  else if(d.coins>=sk.price)btn.textContent=`Buy · ${sk.price} coins`;
+  else{btn.textContent=`Need ${sk.price-d.coins} more coins`;btn.disabled=true}
   $('#sCoins').textContent=d.coins;
 }
 $('#pvBtn').onclick=()=>{const d=Profile.data;const sk=skinById(Shop.preview);
@@ -1557,7 +1627,7 @@ function updateHud(){
 function startRun(){
   audioInit();const nm=$('#nick').value.trim().slice(0,14);if(nm&&nm!==Profile.data.name){Profile.data.name=nm;Profile.save()}
   Shop.preview=null;newGame();S=stats();attract=null;state='play';lastHud={};showScreen(null);
-  banner('תמשיכו לנסוע',input.touch?'גוררים אצבע לכיוון הנסיעה':'חיצים או WASD, או גרירה עם העכבר');
+  banner('Keep driving',input.touch?'Drag where you want to go':'Arrows or WASD, or drag with the mouse');
   $('#moveHint').hidden=!input.touch;
 }
 async function gameOver(){
@@ -1566,14 +1636,14 @@ async function gameOver(){
   const bonus=Math.floor(G.t/10);const earned=G.coins+bonus;
   const d=Profile.data;d.coins+=earned;const newBest=G.t>(d.best||0);if(newBest)d.best=Math.round(G.t*10)/10;Profile.save();
   $('#oTime').textContent=fmtTime(G.t);$('#oKills').textContent=G.kills;$('#oLevel').textContent=G.level;$('#oCoins').textContent='+'+earned;
-  const note=$('#oNote');note.className='save-note';note.textContent=(newBest?'שיא אישי חדש! ':'')+'שומר…';
-  const r=await Net.submit(run);note.textContent=(newBest?'שיא אישי חדש. ':'')+r.msg;if(r.good||newBest)note.classList.add('good');
+  const note=$('#oNote');note.className='save-note';note.textContent=(newBest?'New personal best! ':'')+'Saving…';
+  const r=await Net.submit(run);note.textContent=(newBest?'New personal best. ':'')+r.msg;if(r.good||newBest)note.classList.add('good');
   refreshMenu();
   setTimeout(()=>{const b=$('#againBtn');if(b&&state==='over')b.focus({preventScroll:true})},50);
 }
 function toMenu(){state='menu';G=null;attract=null;Shop.preview=null;showScreen('menu');refreshMenu();renderBoards()}
 function pauseGame(){if(state!=='play')return;state='pause';
-  const owned=UPG.filter(u=>G.L[u.id]>0).map(u=>u.name+' '+G.L[u.id]).join(' · ');$('#pauseBuild').textContent=owned?'השדרוגים שלך: '+owned:'עוד אין שדרוגים.';showScreen('pause')}
+  const owned=UPG.filter(u=>G.L[u.id]>0).map(u=>u.name+' '+G.L[u.id]).join(' · ');$('#pauseBuild').textContent=owned?'Your build: '+owned:'No upgrades yet.';showScreen('pause')}
 function resumeGame(){if(state!=='pause')return;state='play';showScreen(null)}
 
 $('#playBtn').onclick=startRun;$('#againBtn').onclick=startRun;
@@ -1581,7 +1651,7 @@ $('#shopBtn').onclick=()=>{Shop.preview=Profile.data.skin;renderShop();showScree
 $('#overShop').onclick=()=>{state='menu';G=null;Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
 $('#overMenu').onclick=toMenu;$('#pauseBtn').onclick=pauseGame;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
-const muteLabel=()=>{$('#muteToggle').textContent='צליל: '+(muted?'כבוי':'פועל')};muteLabel();
+const muteLabel=()=>{$('#muteToggle').textContent='Sound: '+(muted?'off':'on')};muteLabel();
 $('#muteToggle').onclick=()=>{muted=!muted;LS.set('ld.muted',muted);muteLabel()};
 $('#nick').addEventListener('change',e=>{const v=e.target.value.trim().slice(0,14);if(v){Profile.data.name=v;Profile.save()}});
 $('#nick').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')startRun()});
@@ -1622,7 +1692,7 @@ function frame(now){
 }
 refreshMenu();renderBoards();showScreen('menu');
 if(typeof THREE==='undefined'||!init3D()){
-  const f=document.createElement('div');f.className='fatal';f.textContent='לא הצלחנו להפעיל גרפיקה תלת-ממדית בדפדפן הזה. נסו דפדפן אחר או רעננו את העמוד.';$('#app').appendChild(f);
+  const f=document.createElement('div');f.className='fatal';f.textContent='3D graphics could not start in this browser. Try another browser or reload the page.';$('#app').appendChild(f);
 }else{
   requestAnimationFrame(frame);
 }
