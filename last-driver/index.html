@@ -1097,6 +1097,8 @@ function pAdd(p,x,h,y,yaw,sx,sy,sz,color,pitch){
   if(p.n>=p.max)return;_o.position.set(x,h,y);_o.rotation.set(0,yaw||0,pitch||0);_o.scale.set(sx,sy,sz);_o.updateMatrix();p.m.setMatrixAt(p.n,_o.matrix);
   if(p.colors&&color)p.m.setColorAt(p.n,color);p.n++;
 }
+const _right=new THREE.Vector3();
+function pAddQ(p,x,h,y,sx,sy,q,color){if(p.n>=p.max)return;_o.position.set(x,h,y);_o.quaternion.copy(q);_o.scale.set(sx,sy,1);_o.updateMatrix();p.m.setMatrixAt(p.n,_o.matrix);if(p.colors&&color)p.m.setColorAt(p.n,color);p.n++;_o.rotation.set(0,0,0)}
 function pAddM(p,obj,color){if(p.n>=p.max)return;obj.updateMatrix();p.m.setMatrixAt(p.n,obj.matrix);if(p.colors&&color)p.m.setColorAt(p.n,color);p.n++}
 function pEnd(p){p.m.count=p.n;if(p.ol)p.ol.count=p.n;p.m.instanceMatrix.needsUpdate=true;if(p.colors&&p.m.instanceColor)p.m.instanceColor.needsUpdate=true}
 
@@ -1140,6 +1142,10 @@ function init3D(){
   P.zHead=pool(sph,white(),420,{colors:true,shadow:true,ink:.9});
   P.zArm=pool(arm,white(),840,{colors:true,shadow:true,ink:.8});
   P.zEye=pool(new THREE.SphereGeometry(1,6,4),basic('#ffffff'),840,{colors:true});
+  // health bars: camera-facing quads; the fill is anchored at its left edge so it can shrink
+  const barBg=new THREE.PlaneGeometry(1,1);const barFill=new THREE.PlaneGeometry(1,1);barFill.translate(.5,0,0);
+  P.hpBg=pool(barBg,basic('#07080b',{depthWrite:false}),420,{order:8});
+  P.hpFill=pool(barFill,basic('#ffffff',{depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}),420,{colors:true,order:9});
   P.xp=pool(new THREE.OctahedronGeometry(1),basic('#5cc8ff'),500,{ink:.7});
   P.coin=pool(new THREE.CylinderGeometry(1,1,.28,16),lam('#ffd34a',{emissive:'#8a5c00'}),300,{shadow:true,ink:.7});
   P.med=pool(box,lam('#ffffff',{map:TEX.med,emissive:'#3a3a3a'}),30,{shadow:true,ink:.8});
@@ -1389,7 +1395,8 @@ function render3D(now,dt){
   const ns=inRun&&!G.dead?Math.min(4,G.L.saws):0;const R=G.L.saws>=5?80:68,sr=G.L.saws>=5?16:12;
   sawMeshes.forEach((m,i)=>{m.visible=i<ns;if(!m.visible)return;const a=G.sawA+i/ns*Math.PI*2;m.position.set(c.x+Math.cos(a)*R,10,c.y+Math.sin(a)*R);m.scale.set(sr,1,sr);m.rotation.y=now/40});
   // zombies
-  pBegin(P.zBody);pBegin(P.zBlob);pBegin(P.zHead);pBegin(P.zArm);pBegin(P.zEye);
+  pBegin(P.zBody);pBegin(P.zBlob);pBegin(P.zHead);pBegin(P.zArm);pBegin(P.zEye);pBegin(P.hpBg);pBegin(P.hpFill);
+  _right.set(1,0,0).applyQuaternion(camera.quaternion);const HPG=col('#5fd36a'),HPY=col('#ffc23a'),HPR=col('#ff4a3a');
   const WHITE=col('#ffffff'),EYE=col('#d9ff8a'),EYEB=col('#ff3a2a');
   let boss=null;
   for(const z of G.z){if(z.dead)continue;if(z.type==='boss')boss=z;
@@ -1406,9 +1413,12 @@ function render3D(now,dt){
         const len=z.type==='boss'&&z.boss==='butcher'&&sd>0?r*1.5:r*1.15;
         pAdd(P.zArm,wx,bodyH*.84+bob,wy,yaw+sd*sw*.35,len,r*.3,r*.3,fl?WHITE:(z.type==='boss'&&z.boss==='butcher'&&sd>0?col('#c4c9d2'):hc),-.12-(z.type==='runner'?.25:0))}}
     pAdd(P.zHead,hx,headY,hy,yaw,hr,hr,hr,hc);
+    if(inRun&&z.hp<z.maxHp&&z.hp>0){const f=clamp(z.hp/z.maxHp,0,1);const bw=z.type==='boss'?96:clamp(r*2.3,24,56),bh=z.type==='boss'?7:4.5;const by=headY+hr+(z.type==='boss'?16:9);
+      pAddQ(P.hpBg,z.x,by,z.y,bw+3,bh+3,camera.quaternion);
+      pAddQ(P.hpFill,z.x-_right.x*bw/2,by-_right.y*bw/2,z.y-_right.z*bw/2,bw*f,bh,camera.quaternion,f>.6?HPG:f>.3?HPY:HPR)}
     const ec=z.type==='boss'?EYEB:EYE;for(const sd of [-1,1]){const ex=hx+ca*hr*.82-sa*sd*hr*.38,ey=hy+sa*hr*.82+ca*sd*hr*.38;pAdd(P.zEye,ex,headY+hr*.15,ey,0,hr*.17,hr*.17,hr*.17,ec)}
   }
-  pEnd(P.zBody);pEnd(P.zBlob);pEnd(P.zHead);pEnd(P.zArm);pEnd(P.zEye);
+  pEnd(P.zBody);pEnd(P.zBlob);pEnd(P.zHead);pEnd(P.zArm);pEnd(P.zEye);pEnd(P.hpBg);pEnd(P.hpFill);
   bossRing.visible=!!(boss&&inRun);if(boss){const s=boss.r*1.5+Math.sin(now/200)*3;bossRing.position.set(boss.x,1.2,boss.y);bossRing.scale.set(s,1,s)}
   let tele=null;for(const z of G.z)if(z.boss==='butcher'&&z.st==='wind')tele=z;
   teleMesh.visible=!!tele;if(tele){const L=380;teleMesh.position.set(tele.x+Math.cos(tele.da)*L/2,1.4,tele.y+Math.sin(tele.da)*L/2);teleMesh.rotation.y=-tele.da;teleMesh.scale.set(L,1,tele.r*1.3)}
