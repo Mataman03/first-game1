@@ -503,18 +503,19 @@ function genCity(){
     if(!interior.length)continue;
     let x0=N,y0=N,x1=0,y1=0;for(const k of interior){const x=k%N,y=(k/N)|0;x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
     const r=Math.random();const big=interior.length>36;
-    const huge=interior.length>70;const type=interior.length<4?'walk':huge?(r<.72?'bldg':'park'):r<.52?'bldg':r<.72?'park':r<.87?'lot':'plaza';
+    const huge=interior.length>70;const type=interior.length<4?'walk':huge?(r<.45?'bldg':r<.8?'park':'lot'):r<.34?'bldg':r<.6?'park':r<.8?'lot':'plaza';
     if(type==='bldg'){
-      const free=new Set(interior);const order=interior.slice().sort(()=>Math.random()-.5);
-      for(const k of order){if(!free.has(k))continue;const x=k%N,y=(k/N)|0;
+      const free=new Set(interior);const order=interior.slice().sort(()=>Math.random()-.5);let built=0;const cap=interior.length*rand(.32,.45);
+      for(const k of order){if(!free.has(k)||built>=cap)continue;const x=k%N,y=(k/N)|0;
         let w=randi(2,4),h=randi(2,4);
-        const fits=(w,h)=>{for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(!free.has((y+yy)*N+x+xx))return false;return true};
+        const fits=(w,h)=>{for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(!free.has((y+yy)*N+x+xx))return false;
+          for(let yy=-1;yy<=h;yy++)for(let xx=-1;xx<=w;xx++){if(yy>=0&&yy<h&&xx>=0&&xx<w)continue;if(tileAt(x+xx,y+yy)===T_BLDG)return false}return true};
         while((w>1||h>1)&&!fits(w,h)){if(w>=h&&w>1)w--;else h--}
         if(!fits(w,h))continue;
         if(w*h===1&&Math.random()<.7){free.delete(k);grid[k]=Math.random()<.5?T_GRASS:T_WALK;if(grid[k]===T_GRASS)trees.push({x:(x+.5)*TILE+rand(-8,8),y:(y+.5)*TILE+rand(-8,8),r:rand(14,22),c:pick(['#2f4a2c','#36502e','#2b4436','#3d5530'])});continue}
-        if(Math.random()<.12||(big&&Math.random()<.12)){for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){const kk=(y+yy)*N+x+xx;free.delete(kk);grid[kk]=Math.random()<.5?T_GRASS:T_WALK;if(grid[kk]===T_GRASS&&Math.random()<.5)trees.push({x:(x+xx+.5)*TILE+rand(-10,10),y:(y+yy+.5)*TILE+rand(-10,10),r:rand(14,24),c:pick(['#2f4a2c','#36502e','#2b4436','#3d5530'])})}continue}
-        for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)free.delete((y+yy)*N+x+xx);addB(x,y,w,h)}
-      for(const k of free)grid[k]=T_WALK;
+        if(Math.random()<.3||(big&&Math.random()<.15)){for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){const kk=(y+yy)*N+x+xx;free.delete(kk);grid[kk]=Math.random()<.5?T_GRASS:T_WALK;if(grid[kk]===T_GRASS&&Math.random()<.5)trees.push({x:(x+xx+.5)*TILE+rand(-10,10),y:(y+yy+.5)*TILE+rand(-10,10),r:rand(14,24),c:pick(['#2f4a2c','#36502e','#2b4436','#3d5530'])})}continue}
+        for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)free.delete((y+yy)*N+x+xx);addB(x,y,w,h);built+=w*h}
+      for(const k of free){grid[k]=Math.random()<.25?T_GRASS:T_WALK;if(grid[k]===T_GRASS&&Math.random()<.4)trees.push({x:(k%N+.5)*TILE+rand(-10,10),y:(((k/N)|0)+.5)*TILE+rand(-10,10),r:rand(14,22),c:pick(['#2f4a2c','#36502e','#2b4436','#3d5530'])})}
     }else if(type==='park'){
       for(const k of interior)grid[k]=T_GRASS;parks.push({x0,y0,x1,y1});
       const n=Math.max(2,Math.round(interior.length/3));for(let i=0;i<n;i++){const k=pick(interior);trees.push({x:(k%N+.5)*TILE+rand(-16,16),y:(((k/N)|0)+.5)*TILE+rand(-16,16),r:rand(15,27),c:pick(['#2f4a2c','#36502e','#2b4436','#3d5530'])})}
