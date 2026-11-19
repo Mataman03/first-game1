@@ -420,6 +420,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
         <button class="btn go" id="resumeBtn">Resume</button>
         <button class="btn" id="muteToggle">Sound: on</button>
         <button class="btn" id="musicToggle">Music: on</button>
+        <button class="btn" id="engineToggle">Engine sound: on</button>
         <button class="btn" id="quitBtn">Quit to menu</button>
       </div>
     </div>
@@ -636,18 +637,26 @@ function sfx(name,arg){
   }
 }
 
-/* engine: two detuned oscillators whose pitch follows the car's speed */
+/* engine: a soft low hum plus road/wind noise that rises with speed (no buzz) */
+let engineOn=LS.get('ld.engine',true);
+function setEngine(on){engineOn=on;LS.set('ld.engine',on)}
 const Engine={nodes:null,
   update(speed,on){
-    if(!AC||AC.state!=='running')return;const t=AC.currentTime;
-    if(on&&!this.nodes){const o1=AC.createOscillator(),o2=AC.createOscillator(),f=AC.createBiquadFilter(),g=AC.createGain();
-      o1.type='sawtooth';o2.type='square';f.type='lowpass';f.frequency.value=420;f.Q.value=3;g.gain.value=.0001;
-      o1.connect(f);o2.connect(f);f.connect(g);g.connect(sfxBus);o1.start();o2.start();this.nodes={o1,o2,f,g}}
+    if(!AC||AC.state!=='running')return;const t=AC.currentTime;on=on&&engineOn;
+    if(on&&!this.nodes){
+      const o1=AC.createOscillator(),o2=AC.createOscillator(),lp=AC.createBiquadFilter(),g=AC.createGain();
+      o1.type='sine';o2.type='triangle';lp.type='lowpass';lp.frequency.value=320;lp.Q.value=.5;g.gain.value=.0001;
+      o1.connect(lp);o2.connect(lp);lp.connect(g);g.connect(sfxBus);
+      const n=AC.createBufferSource();n.buffer=noiseBuf;n.loop=true;const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=500;bp.Q.value=.6;const ng=AC.createGain();ng.gain.value=.0001;
+      n.connect(bp);bp.connect(ng);ng.connect(sfxBus);
+      o1.start();o2.start();n.start();this.nodes={o1,o2,lp,g,n,bp,ng}}
     if(!this.nodes)return;
-    if(!on){const n=this.nodes;this.nodes=null;n.g.gain.setTargetAtTime(.0001,t,.08);n.o1.stop(t+.5);n.o2.stop(t+.5);return}
-    const k=Math.min(1,speed/300);const base=36+k*95+Math.sin(t*9)*1.5;
-    this.nodes.o1.frequency.setTargetAtTime(base,t,.06);this.nodes.o2.frequency.setTargetAtTime(base*.502,t,.06);
-    this.nodes.f.frequency.setTargetAtTime(260+k*900,t,.08);this.nodes.g.gain.setTargetAtTime(.022+k*.04,t,.1);
+    const N=this.nodes;
+    if(!on){this.nodes=null;N.g.gain.setTargetAtTime(.0001,t,.12);N.ng.gain.setTargetAtTime(.0001,t,.12);N.o1.stop(t+.8);N.o2.stop(t+.8);N.n.stop(t+.8);return}
+    const k=Math.min(1,speed/300);const base=48+k*70;
+    N.o1.frequency.setTargetAtTime(base,t,.15);N.o2.frequency.setTargetAtTime(base*2,t,.15);
+    N.lp.frequency.setTargetAtTime(220+k*380,t,.15);N.g.gain.setTargetAtTime(.008+k*.022,t,.2);
+    N.bp.frequency.setTargetAtTime(380+k*900,t,.2);N.ng.gain.setTargetAtTime(k*k*.05,t,.2);
   }
 };
 
@@ -1924,8 +1933,9 @@ $('#shopBtn').onclick=()=>{Shop.preview=Profile.data.skin;renderShop();showScree
 $('#overShop').onclick=()=>{state='menu';G=null;Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
 $('#overMenu').onclick=toMenu;$('#pauseBtn').onclick=pauseGame;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
-const muteLabel=()=>{$('#muteToggle').textContent='Sound: '+(muted?'off':'on');$('#musicToggle').textContent='Music: '+(musicOn?'on':'off');const hm=$('#homeMusic');hm.textContent=musicOn?'♪ Music on':'♪ Music off';hm.setAttribute('aria-pressed',musicOn)};muteLabel();
+const muteLabel=()=>{$('#engineToggle').textContent='Engine sound: '+(engineOn?'on':'off');$('#muteToggle').textContent='Sound: '+(muted?'off':'on');$('#musicToggle').textContent='Music: '+(musicOn?'on':'off');const hm=$('#homeMusic');hm.textContent=musicOn?'♪ Music on':'♪ Music off';hm.setAttribute('aria-pressed',musicOn)};muteLabel();
 $('#muteToggle').onclick=()=>{audioInit();setMuted(!muted);muteLabel()};
+$('#engineToggle').onclick=()=>{audioInit();setEngine(!engineOn);muteLabel()};
 $('#musicToggle').onclick=()=>{audioInit();setMusic(!musicOn);muteLabel()};
 $('#homeMusic').onclick=()=>{audioInit();if(muted)setMuted(false);setMusic(!musicOn);muteLabel()};
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('button'))sfx('click')});
