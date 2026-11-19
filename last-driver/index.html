@@ -57,7 +57,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .btn.go:active{box-shadow:1px 1px 0 var(--ink);transform:translate(4px,4px)}
 .btn.go kbd{background:rgba(26,20,8,.12);border-color:rgba(26,20,8,.3);color:var(--sodium-ink)}
 .btn .badge{font-size:13px;font-weight:700;color:var(--coin);background:rgba(0,0,0,.35);border-radius:20px;padding:2px 9px;font-variant-numeric:tabular-nums}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:10px}
 .stat{background:var(--plate-2);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .stat b{font-family:var(--display);font-weight:400;font-size:24px;font-variant-numeric:tabular-nums}
 .stat span{font-size:12px;color:var(--muted);letter-spacing:.04em}
@@ -194,6 +194,29 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 #hud{position:absolute;inset:0;pointer-events:none}
 #fx{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 55%,rgba(5,5,10,.6) 100%)}
 #dmg{position:absolute;inset:0;background:rgba(200,20,20,1);opacity:0}
+#fx2d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#combo{position:absolute;right:max(18px,env(safe-area-inset-right,0px));top:34%;display:flex;flex-direction:column;align-items:flex-end;gap:2px;transform:rotate(-4deg);pointer-events:none}
+#combo b{font:400 54px/1 var(--display);color:var(--paper);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:4px 4px 0 var(--ink)}
+#combo span{font:400 14px var(--display);color:var(--paper);text-transform:uppercase;letter-spacing:.1em;text-shadow:2px 2px 0 var(--ink)}
+#combo i{font:400 22px var(--display);font-style:normal;color:var(--ink);background:var(--sodium);border:3px solid var(--ink);border-radius:8px;padding:0 10px;box-shadow:3px 3px 0 var(--ink)}
+#combo[data-tier="2"] i{background:#7ee08a}#combo[data-tier="3"] i{background:var(--xp)}#combo[data-tier="5"] i{background:#ff6ad5}
+#combo .cbar{width:110px;height:8px;border:2px solid var(--ink);border-radius:5px;background:rgba(0,0,0,.5);overflow:hidden;margin-top:4px}
+#comboBar{height:100%;background:var(--sodium);width:100%}
+#combo.pop b{animation:cpop .18s ease-out}
+@keyframes cpop{from{transform:scale(1.35)}to{transform:scale(1)}}
+#nitroBtn{pointer-events:auto;position:absolute;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:92px;height:92px;border-radius:50%;
+  border:4px solid var(--ink);box-shadow:4px 4px 0 var(--ink);background:#2a2f3c;color:var(--paper);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:none;cursor:pointer}
+#nitroBtn .nfill{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(0deg,#ff8a2a,var(--sodium));transition:height .15s}
+#nitroBtn .nlab{position:relative;font:400 15px var(--display);text-shadow:2px 2px 0 var(--ink)}
+#nitroBtn kbd{position:relative;font-size:10px}
+#nitroBtn.ready{animation:npulse .8s ease-in-out infinite alternate}
+#nitroBtn.ready .nlab{color:var(--paper)}
+#nitroBtn.on{background:#5cc8ff}
+#nitroBtn.on .nfill{background:linear-gradient(0deg,#5cc8ff,#d8f4ff)}
+@keyframes npulse{from{box-shadow:4px 4px 0 var(--ink),0 0 0 0 rgba(255,178,63,.7)}to{box-shadow:4px 4px 0 var(--ink),0 0 0 12px rgba(255,178,63,0)}}
+.touch #nitroKey{display:none}
+.touch #nitroBtn{width:104px;height:104px}
+@media (prefers-reduced-motion:reduce){#nitroBtn.ready{animation:none}#combo.pop b{animation:none}}
 #xpbar{position:absolute;top:0;left:0;right:0;height:6px;background:rgba(0,0,0,.5)}
 #xpfill{height:100%;width:0;background:var(--xp);box-shadow:0 0 10px var(--xp);transition:width .15s}
 .hud-top{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:max(14px,env(safe-area-inset-left,0px));right:max(14px,env(safe-area-inset-right,0px));
@@ -269,7 +292,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   .stat b{font-size:20px}
 }
 /* touch layout: smaller gauges */
-.touch .hud-bottom{width:min(320px,80vw)}
+.touch .hud-bottom{left:max(16px,env(safe-area-inset-left,0px));transform:none;width:calc(100% - 160px)}
 .touch .speedo{width:58px;height:58px}
 .touch .speedo b{font-size:19px}
 
@@ -280,7 +303,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   <canvas id="game" aria-label="City"></canvas>
 
   <div id="hud" hidden>
-    <div id="fx"></div><div id="dmg"></div>
+    <div id="fx"></div><div id="dmg"></div><canvas id="fx2d"></canvas>
     <div id="xpbar"><div id="xpfill"></div></div>
     <div class="hud-top">
       <div class="hud-group">
@@ -303,6 +326,8 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
       <div class="hpwrap"><div id="hpbar"><div id="hpfill"></div></div><div id="hptext">120 / 120</div></div>
     </div>
     <div id="banner"></div>
+    <div id="combo" hidden><b id="comboN">0</b><span>combo</span><i id="comboMult">×1</i><div class="cbar"><div id="comboBar"></div></div></div>
+    <button id="nitroBtn" aria-label="Nitro boost"><span class="nfill" id="nitroFill"></span><span class="nlab">Nitro</span><kbd id="nitroKey">Space</kbd></button>
     <div id="bossArrow" hidden></div>
     <div id="joy" hidden><div id="joyKnob"></div></div>
     <div class="move-hint" id="moveHint" hidden>Touch anywhere and drag where you want to go. Drag farther to go faster.</div>
@@ -337,7 +362,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
             <div class="ilplate"><span class="strip">LD<i>ZONE 1</i></span><input id="nick" maxlength="14" autocomplete="off" spellcheck="false"></div>
           </div>
           <button class="drive" id="playBtn">Drive! <kbd>Enter</kbd></button>
-          <p class="how">Drag in any direction. The farther you drag, the faster you go. Keyboard: arrows or WASD.</p>
+          <p class="how">Drag in any direction. The farther you drag, the faster you go. Chain kills for combo multipliers and fill your nitro.</p>
         </div>
         <button class="stk sq l" id="boardBtn">
           <svg viewBox="0 0 24 24" fill="#07080b"><path d="M6 2h12v3h4v3a5 5 0 0 1-5 5h-.3A6 6 0 0 1 13 16v3h4v3H7v-3h4v-3a6 6 0 0 1-3.7-3H7a5 5 0 0 1-5-5V5h4zm0 5H4v1a3 3 0 0 0 2 2.8zm12 0v3.8A3 3 0 0 0 20 8V7z"/></svg>Scores</button>
@@ -409,6 +434,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
         <div class="stats">
           <div class="stat"><span>Kills</span><b id="oKills">0</b></div>
           <div class="stat"><span>Level</span><b id="oLevel">1</b></div>
+          <div class="stat"><span>Best combo</span><b id="oCombo">0</b></div>
           <div class="stat"><span>Coins</span><b class="coin" id="oCoins">+0</b></div>
         </div>
         <p class="save-note" id="oNote"></p>
@@ -579,8 +605,8 @@ function noise(t,dur,vol,type,f1,f2,q,dest){
   const s=AC.createBufferSource();s.buffer=noiseBuf;s.loop=true;const fl=AC.createBiquadFilter();fl.type=type||'lowpass';fl.frequency.setValueAtTime(f1,t);if(f2)fl.frequency.exponentialRampToValueAtTime(f2,t+dur);fl.Q.value=q||1;
   const g=AC.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(fl);fl.connect(g);g.connect(dest||sfxBus);s.start(t,Math.random()*.5);s.stop(t+dur+.05);
 }
-const SFX_GAP={hit:.045,splat:.06,shot:.07,xp:.035,coin:.05,zap:.09,hurt:.14,groan:.5,skid:.3,crash:.2,boom:.06,click:.03};
-function sfx(name){
+const SFX_GAP={hit:.045,splat:.06,shot:.07,xp:.035,coin:.05,zap:.09,hurt:.14,groan:.5,skid:.3,crash:.2,boom:.06,click:.03,combo:.035,tier:.2,nitro:.5,comboEnd:.3};
+function sfx(name,arg){
   if(!AC||muted||AC.state!=='running')return;const t=AC.currentTime;const gap=SFX_GAP[name]??.03;
   if(lastSfx[name]&&t-lastSfx[name]<gap)return;lastSfx[name]=t;
   switch(name){
@@ -601,6 +627,10 @@ function sfx(name){
     case 'skid':noise(t,.35,.09,'bandpass',2300,1500,9);break;
     case 'crash':noise(t,.3,.5,'lowpass',1700,180,1);tone('square',95,48,t,.22,.16,undefined,.003,900);break;
     case 'die':noise(t,1.6,.85,'lowpass',2000,40,.7);tone('sawtooth',320,38,t,1.3,.22,undefined,.005,1200);break;
+    case 'combo':{const n=Math.min(arg||1,48);const f=330*Math.pow(2,n/16);tone('triangle',f,f*1.02,t,.09,.05,undefined,.002,5000);break}
+    case 'tier':[0,4,7,12].forEach((k,i)=>{const f=659*Math.pow(2,k/12);tone('square',f,f,t+i*.045,.16,.07,undefined,.003,4200)});noise(t,.25,.12,'highpass',6000,9000,1);break;
+    case 'comboEnd':[784,659,880].forEach((f,i)=>tone('triangle',f,f,t+i*.08,.2,.09));break;
+    case 'nitro':noise(t,1.1,.5,'bandpass',300,3500,2);tone('sawtooth',90,420,t,.9,.14,undefined,.02,1800);tone('sawtooth',92,428,t,.9,.1,undefined,.02,1800);break;
     case 'click':tone('square',640,640,t,.035,.035,undefined,.002,3000);break;
     default:tone('sine',440,220,t,.1,.03);
   }
@@ -699,7 +729,7 @@ const UPG=[
   {id:'tesla',name:'Tesla Coil',tag:'Weapon',max:5,desc:l=>`Lightning that chains through ${2+l} zombies`},
   {id:'fire',name:'Fire Trail',tag:'Weapon',max:5,desc:l=>l===1?'Your tires leave burning fuel':'Hotter, longer-lasting fire'},
   {id:'shock',name:'Shockwave',tag:'Weapon',max:5,desc:l=>l===1?'A pulse that knocks back everything nearby':'More frequent, wider pulse'},
-  {id:'nitro',name:'Nitro',tag:'Car',max:5,desc:l=>'Top speed +12%, acceleration +15%'},
+  {id:'nitro',name:'Turbo Engine',tag:'Car',max:5,desc:l=>'Top speed +12%, acceleration +15%'},
   {id:'armor',name:'Armor Plates',tag:'Car',max:5,desc:l=>`Take ${10*l}% less damage`},
   {id:'engine',name:'Reinforced Frame',tag:'Car',max:5,desc:l=>'+25 max health, and repairs 25'},
   {id:'repair',name:'Self Repair',tag:'Car',max:5,desc:l=>`Restores ${(0.6*l).toFixed(1)} health per second`},
@@ -739,7 +769,8 @@ function newGame(){
   const c={x:START.x,y:START.y,a:-Math.PI/2,vx:0,vy:0,hp:0,r:17,turretA:0,skin:skinById(Profile.data.skin)};
   G={t:0,car:c,z:[],pick:[],bul:[],rock:[],acid:[],mines:[],fires:[],puddles:[],bolts:[],rings:[],parts:[],blood:[],skids:[],
      level:1,xp:0,kills:0,coins:0,L:{},cd:{},spawnAcc:0,nextHorde:55,nextBoss:120,bossIdx:0,boss:null,pending:0,pendingChest:0,
-     dmgFlash:0,dead:false,deadT:0,flow:null,flowTile:-1,flowT:0,lastSkid:null,fireDrop:0,sawA:0,banner:null};
+     dmgFlash:0,dead:false,deadT:0,flow:null,flowTile:-1,flowT:0,lastSkid:null,fireDrop:0,sawA:0,banner:null,
+     combo:0,comboT:0,bestCombo:0,boost:0,boostT:0,corpses:[],nums:[],hitstop:0,slow:0,slowCd:0,recent:[]};
   for(const u of UPG)G.L[u.id]=0;
   c.hp=c.skin.hp;
   G.L.turret=1; // starter weapon
@@ -752,10 +783,16 @@ function newGame(){
 function stats(){
   const L=G.L;
   return{
-    maxSpeed:G.car.skin.speed*(1+.12*L.nitro),accel:G.car.skin.speed*1.3*(1+.15*L.nitro),maxHp:G.car.skin.hp+25*L.engine,armor:Math.min(.5,.1*L.armor),regen:.6*L.repair,
-    magnet:95*(1+.4*L.magnet),xpMul:1+.15*L.learn,ram:G.car.skin.ram*(1+.35*L.ram),coin:.06*(1+.4*L.luck),med:.012*(1+.4*L.luck)
+    maxSpeed:G.car.skin.speed*(1+.12*L.nitro)*(G.boostT>0?1.6:1),accel:G.car.skin.speed*1.3*(1+.15*L.nitro)*(G.boostT>0?2.4:1),maxHp:G.car.skin.hp+25*L.engine,armor:Math.min(.5,.1*L.armor),regen:.6*L.repair,
+    magnet:95*(1+.4*L.magnet),xpMul:1+.15*L.learn,ram:G.car.skin.ram*(1+.35*L.ram)*(G.boostT>0?2.5:1),coin:.06*(1+.4*L.luck),med:.012*(1+.4*L.luck)
   };
 }
+/* ---------- combo, nitro boost, feel ---------- */
+const COMBO_WINDOW=2.2;
+function comboMult(){const c=G.combo;return c>=50?5:c>=25?3:c>=10?2:1}
+function addNum(x,y,h,v,kind){if(G.nums.length>60)G.nums.shift();G.nums.push({x:x+rand(-6,6),y:y+rand(-6,6),h,v,kind:kind||'',t:0,life:.75})}
+function useBoost(){if(!G||state!=='play'||G.dead||G.boost<100||G.boostT>0)return;G.boost=0;G.boostT=3.4;sfx('nitro');shake(5);banner('NITRO!',null)}
+function slowMo(sec){if(G.slowCd>0)return;G.slow=Math.max(G.slow,sec);G.slowCd=sec+3}
 let S=null;
 const xpNeed=l=>Math.floor(5+(l-1)*5+Math.pow(l-1,1.6));
 
@@ -880,22 +917,30 @@ function explode(x,y,r,dmg,hurtsCar,col){
   shake(r/14);sfx('boom');V.flash=Math.min(2.2,V.flash+r/60);V.flashX=x;V.flashY=y;
 }
 function hurt(z,dmg,kx,ky){
-  if(z.dead)return;z.hp-=dmg;z.flash=.09;
+  if(z.dead)return;z.hp-=dmg;z.flash=.09;if(dmg>=1)addNum(z.x,z.y,z.r*2.7,Math.round(dmg),dmg>=40?'big':'');
   const m=z.type==='boss'?12:z.mass;z.kx+=(kx||0)/m;z.ky+=(ky||0)/m;
   if(z.hp<=0)killZ(z);else sfx('hit');
 }
 function killZ(z){
   z.dead=true;G.kills++;sfx('splat');
+  if(!G.dead){const before=comboMult();G.combo++;G.comboT=COMBO_WINDOW;G.bestCombo=Math.max(G.bestCombo,G.combo);sfx('combo',G.combo);
+    if(comboMult()>before){sfx('tier');addNum(G.car.x,G.car.y,60,'×'+comboMult(),'tier')}
+    if(G.boostT<=0)G.boost=Math.min(100,G.boost+(z.type==='boss'?100:2.5+Math.min(4,G.combo/12)));
+    G.recent.push(G.t);while(G.recent.length&&G.t-G.recent[0]>.4)G.recent.shift();
+    if(G.recent.length>=7){slowMo(.55);G.recent.length=0}}
+  if(z.type!=='bloater'&&G.corpses.length<40){const sp=Math.hypot(z.kx,z.ky);const a=sp>5?Math.atan2(z.ky,z.kx):Math.random()*6.28;const v=Math.max(60,Math.min(420,sp*1.3));
+    G.corpses.push({x:z.x,y:z.y,h:0,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vh:z.type==='boss'?180:rand(120,140)+v*.6,spin:0,vs:rand(6,12)*(Math.random()<.5?-1:1),a:z.a,r:z.r,col:z.col,head:z.head,type:z.type,t:1.4,bounced:false})
+    for(let i=0;i<5;i++)part(z.x,z.y,Math.cos(a)*v*rand(.3,.9)+rand(-60,60),Math.sin(a)*v*rand(.3,.9)+rand(-60,60),rand(.6,1.1),pick(['#7a1520','#5a0f18','#9a2a2a',z.col]),rand(2.5,4.5),'dot',z.r,rand(120,280))}
   bloodAt(z.x,z.y,z.r*.9,z.type==='bloater'||z.type==='spitter'?'rgba(120,150,40,.55)':'rgba(110,18,24,.6)');
   burst(z.x,z.y,8,z.type==='bloater'?'#b9cc55':'#8c1c24',180,3);
   const xp=z.xp;
   if(z.type==='boss'){
     for(let i=0;i<14;i++)dropPick('coin',z.x,z.y,3,true);
     for(let i=0;i<10;i++)dropPick('xp',z.x,z.y,5,true);
-    dropPick('chest',z.x,z.y,1,false);G.boss=null;banner(z.name+' down','A supply crate dropped');explode(z.x,z.y,90,0,0,'#ff7a5a');
+    dropPick('chest',z.x,z.y,1,false);G.boss=null;G.slowCd=0;slowMo(1.3);G.hitstop=.12;banner(z.name+' down','A supply crate dropped');explode(z.x,z.y,90,0,0,'#ff7a5a');
   }else{
-    dropPick('xp',z.x,z.y,xp,false);
-    if(Math.random()<S.coin*(z.type==='brute'?4:1))dropPick('coin',z.x,z.y,z.type==='brute'?3:1,false);
+    const mul=comboMult();dropPick('xp',z.x,z.y,xp*mul,false);
+    if(Math.random()<S.coin*(z.type==='brute'?4:1)*(mul>1?1.5:1))dropPick('coin',z.x,z.y,(z.type==='brute'?3:1)*mul,false);
     if(Math.random()<S.med)dropPick('med',z.x,z.y,1,false);
   }
   if(z.type==='bloater')explode(z.x,z.y,95,55,20,'#b9cc55');
@@ -921,9 +966,14 @@ function carDie(){sfx('die');
 function update(dt){
   if(state==='menu'){updateAttract(dt);return}
   if(state!=='play'&&state!=='dead')return;
+  if(G.hitstop>0){G.hitstop-=dt;return}
+  if(G.slow>0){G.slow-=dt;dt*=.33}
+  if(G.slowCd>0)G.slowCd-=dt;
   S=stats();
   const c=G.car;
   if(!G.dead)G.t+=dt;
+  if(G.boostT>0){G.boostT-=dt;const bx=Math.cos(c.a),by=Math.sin(c.a);for(let i=0;i<3;i++)part(c.x-bx*26+rand(-5,5),c.y-by*26+rand(-5,5),-bx*rand(120,220)+rand(-30,30),-by*rand(120,220)+rand(-30,30),rand(.2,.35),pick(['#ffd34a','#ff8a2a','#5cc8ff']),rand(3,5),'fire',8,rand(-10,20))}
+  if(G.comboT>0){G.comboT-=dt;if(G.comboT<=0){if(G.combo>=10){const bonus=Math.floor(G.combo/5);G.coins+=bonus;banner('Combo '+G.combo+'!','+'+bonus+' coins');sfx('comboEnd')}G.combo=0}}
   // ---- car control: one stick. Direction = where to go, distance from centre = how fast.
   let targetA=null,mag=0;
   if(!G.dead){
@@ -935,7 +985,7 @@ function update(dt){
   const fx=Math.cos(c.a),fy=Math.sin(c.a);
   let fwd=c.vx*fx+c.vy*fy,lat=-c.vx*fy+c.vy*fx;
   const spd=Math.hypot(c.vx,c.vy);
-  let want=mag*S.maxSpeed;
+  let want=G.boostT>0?S.maxSpeed:mag*S.maxSpeed;
   if(targetA!==null){const d=angDiff(c.a,targetA);
     const turnRate=3.4*clamp(Math.abs(fwd)/120,.45,1);
     c.a+=clamp(d,-turnRate*dt,turnRate*dt);
@@ -1014,14 +1064,15 @@ function updateZombies(dt){
       const nx=-dx/d,ny=-dy/d; // from car to zombie
       const closing=c.vx*(-nx)+c.vy*(-ny); // negative when car moves toward zombie
       const impact=Math.max(0,-closing);
-      if(impact>100&&z.ram<=0){
+      const boosting=G.boostT>0;
+      if((impact>100||(boosting&&impact>30))&&z.ram<=0){
         z.ram=.28;
         const dmg=18*S.ram*Math.pow(impact/260,1.3);
         const kb=impact*.9;
         if(z.type==='boss'){hurt(z,dmg*.6,0,0);c.vx=-c.vx*.45;c.vy=-c.vy*.45;shake(6);
           if(z.atk<=0){z.atk=.9;hurtCar(z.dmg*.6)}}
-        else{hurt(z,dmg,nx*kb,ny*kb);const loss=Math.min(.6,.12+z.mass*.05);c.vx*=1-loss;c.vy*=1-loss;if(z.dead)shake(z.mass*.8)}
-      }else if(z.atk<=0&&z.dmg>0){z.atk=1;hurtCar(z.dmg)}
+        else{hurt(z,dmg,nx*kb*(boosting?1.6:1),ny*kb*(boosting?1.6:1));if(!boosting){const loss=Math.min(.6,.12+z.mass*.05);c.vx*=1-loss;c.vy*=1-loss}if(z.dead){shake(z.mass*.8);if(z.mass>=2)G.hitstop=Math.max(G.hitstop,.06)}}
+      }else if(z.atk<=0&&z.dmg>0&&!(boosting&&z.type!=='boss')){z.atk=1;hurtCar(z.dmg)}
       // push out
       const p=rr-d;const share=z.type==='boss'?1:z.mass>3?.6:.15;
       c.x-=nx*p*share;c.y-=ny*p*share;z.x+=nx*p*(1-share);z.y+=ny*p*(1-share);
@@ -1151,6 +1202,12 @@ function updateFx(dt){
   G.rings=G.rings.filter(r=>r.t<r.dur+.15);
   for(const b of G.bolts)b.t-=dt;G.bolts=G.bolts.filter(b=>b.t>0);
   for(const f of G.fires)f.t-=dt;G.fires=G.fires.filter(f=>f.t>0);
+  if(G.corpses)for(const k of G.corpses){k.t-=dt;k.x+=k.vx*dt;k.y+=k.vy*dt;k.h+=k.vh*dt;k.vh-=900*dt;k.spin+=k.vs*dt;
+    if(k.h<=0){k.h=0;if(!k.bounced&&k.vh<-120){k.vh=-k.vh*.35;k.bounced=true;k.vs*=.5}else{k.vh=0;k.vx*=Math.exp(-8*dt);k.vy*=Math.exp(-8*dt);k.vs=0;k.spin=Math.atan2(Math.sin(k.spin),Math.cos(k.spin));const tg=k.spin>=0?Math.PI/2:-Math.PI/2;k.spin+=(tg-k.spin)*Math.min(1,dt*10)}}
+    const o={x:k.x,y:k.y};if(resolveSolid(o,6)){k.vx*=-.3;k.vy*=-.3}k.x=o.x;k.y=o.y;
+    if(k.t<=0)bloodAt(k.x,k.y,k.r*.9,k.type==='spitter'?'rgba(120,150,40,.55)':'rgba(110,18,24,.6)')}
+  if(G.corpses)G.corpses=G.corpses.filter(k=>k.t>0);
+  if(G.nums){for(const n of G.nums){n.t+=dt;n.h+=dt*(n.kind==='tier'?30:55)}G.nums=G.nums.filter(n=>n.t<n.life)}
 }
 
 /* ---------- attract mode behind menus ---------- */
@@ -1498,6 +1555,21 @@ function ensureCar(sk){
   carRig=buildCar(sk);carSkinId=sk.id;scene.add(carRig.g);
 }
 
+/* ---------- floating damage numbers on a 2D overlay ---------- */
+const fx2d=document.getElementById('fx2d'),fxc=fx2d.getContext('2d');let fxW=0,fxH=0,fxDirty=false;
+function drawNums(){
+  const dpr=Math.min(2,window.devicePixelRatio||1);if(fxW!==W||fxH!==H){fxW=W;fxH=H;fx2d.width=W*dpr;fx2d.height=H*dpr}
+  const list=G&&state!=='menu'?G.nums:null;
+  if(!list||!list.length){if(fxDirty){fxc.setTransform(1,0,0,1,0,0);fxc.clearRect(0,0,fx2d.width,fx2d.height);fxDirty=false}return}
+  fxc.setTransform(dpr,0,0,dpr,0,0);fxc.clearRect(0,0,W,H);fxDirty=true;fxc.textAlign='center';fxc.textBaseline='middle';fxc.lineJoin='round';
+  for(const n of list){_v.set(n.x,n.h,n.y).project(camera);if(_v.z>1||Math.abs(_v.x)>1.1||Math.abs(_v.y)>1.1)continue;
+    const sx=(_v.x*.5+.5)*W,sy=(-_v.y*.5+.5)*H;const k=n.t/n.life;const a=k<.6?1:1-(k-.6)/.4;const pop=n.t<.1?1.5-n.t*5:1;
+    const size=(n.kind==='tier'?34:n.kind==='big'?22:15)*pop;fxc.font=`${size}px "Bungee","Rubik",sans-serif`;
+    fxc.globalAlpha=Math.max(0,a);fxc.lineWidth=n.kind==='tier'?7:4;fxc.strokeStyle='#07080b';fxc.strokeText(n.v,sx,sy);
+    fxc.fillStyle=n.kind==='tier'?'#5cc8ff':n.kind==='big'?'#ffd34a':'#ffffff';fxc.fillText(n.v,sx,sy)}
+  fxc.globalAlpha=1;
+}
+
 /* ---------- garage thumbnails: each car rendered once into an image ---------- */
 const Thumbs={};
 function makeThumbs(){
@@ -1581,6 +1653,12 @@ function render3D(now,dt){
       pAddQ(P.hpFill,z.x-_right.x*bw/2,by-_right.y*bw/2,z.y-_right.z*bw/2,bw*f,bh,camera.quaternion,f>.6?HPG:f>.3?HPY:HPR)}
     const ec=z.type==='boss'?EYEB:EYE;for(const sd of [-1,1]){const ex=hx+ca*hr*.82-sa*sd*hr*.38,ey=hy+sa*hr*.82+ca*sd*hr*.38;pAdd(P.zEye,ex,headY+hr*.15,ey,0,hr*.17,hr*.17,hr*.17,ec)}
   }
+  // flying corpses: same body parts, tumbling through the air
+  for(const k of (G.corpses||[])){const r=k.r*(k.type==='boss'?1:1),H=r*1.75,ca=Math.cos(k.a),sa=Math.sin(k.a),s=k.spin;
+    const lift=Math.abs(Math.sin(s))*r*.7;const fade=k.t<.3?k.t/.3:1;
+    const bc=col(k.col).clone().multiplyScalar(.75+.25*fade),hc=col(k.head).clone().multiplyScalar(.75+.25*fade);
+    pAdd(P.zBody,k.x,k.h+lift,k.y,-k.a,r*1.15,H,r*1.75,bc,s);
+    const X=-(H+r*.35)*Math.sin(s),Y=(H+r*.35)*Math.cos(s);pAdd(P.zHead,k.x+ca*X,k.h+lift+Y,k.y+sa*X,-k.a,r*.45,r*.45,r*.45,hc)}
   pEnd(P.zBody);pEnd(P.zBlob);pEnd(P.zHead);pEnd(P.zArm);pEnd(P.zEye);pEnd(P.hpBg);pEnd(P.hpFill);
   bossRing.visible=!!(boss&&inRun);if(boss){const s=boss.r*1.5+Math.sin(now/200)*3;bossRing.position.set(boss.x,1.2,boss.y);bossRing.scale.set(s,1,s)}
   let tele=null;for(const z of G.z)if(z.boss==='butcher'&&z.st==='wind')tele=z;
@@ -1620,7 +1698,10 @@ function render3D(now,dt){
   // light flash from explosions
   V.flash=Math.max(0,V.flash-dt*5);flashLight.intensity=V.flash*1.6;flashLight.position.set(V.flashX,40,V.flashY);
   if(worldGroup)for(const o of worldGroup.children){if(o.userData.flicker!=null){const f=.8+Math.sin(now/90+o.userData.flicker)*.2;o.scale.set(160*f,1,160*f)}}
+  // nitro widens the view for a sense of speed
+  const fovT=inRun&&G.boostT>0?49:40;if(Math.abs(camera.fov-fovT)>.05){camera.fov=lerp(camera.fov,fovT,Math.min(1,dt*6));camera.updateProjectionMatrix()}
   renderer.render(scene,camera);
+  drawNums();
   // boss pointer (screen space)
   const arrow=$('#bossArrow');
   if(boss&&inRun&&state==='play'){_v.set(boss.x,20,boss.y).project(camera);const on=_v.z<1&&Math.abs(_v.x)<.95&&Math.abs(_v.y)<.95;
@@ -1808,13 +1889,18 @@ function updateHud(){
   const pct=Math.round(clamp(Math.abs(c.fwd||0)/s.maxSpeed,0,1)*100);if(lastHud.pct!==pct){lastHud.pct=pct;$('#spdArc').setAttribute('stroke-dasharray',`${pct*.75} 100`)}
   const b=G.boss;$('#bossbar').hidden=!(b&&!b.dead);if(b&&!b.dead){set('#bossName',b.name);$('#bossfill').style.width=(100*clamp(b.hp/b.maxHp,0,1)).toFixed(1)+'%'}
   const bn=$('#banner');if(G.banner){if(lastHud.bn!==G.banner.text){lastHud.bn=G.banner.text;bn.innerHTML='';bn.append(G.banner.text);if(G.banner.sub){const sm=document.createElement('small');sm.textContent=G.banner.sub;bn.append(sm)}}bn.style.opacity=state==='play'?Math.min(1,G.banner.t):0}else bn.style.opacity=0;
+  // combo meter
+  const cb=$('#combo');if(G.combo>=3&&!G.dead){cb.hidden=false;if(lastHud.combo!==G.combo){lastHud.combo=G.combo;$('#comboN').textContent=G.combo;cb.classList.remove('pop');void cb.offsetWidth;cb.classList.add('pop')}
+    const m=comboMult();if(lastHud.mult!==m){lastHud.mult=m;$('#comboMult').textContent='×'+m;cb.dataset.tier=m}$('#comboBar').style.width=(100*clamp(G.comboT/COMBO_WINDOW,0,1)).toFixed(1)+'%'}else{cb.hidden=true;lastHud.combo=-1}
+  // nitro
+  const nb=$('#nitroBtn');$('#nitroFill').style.height=(G.boostT>0?100*G.boostT/3.4:G.boost).toFixed(1)+'%';nb.classList.toggle('ready',G.boost>=100&&G.boostT<=0);nb.classList.toggle('on',G.boostT>0);
   const low=c.hp<s.maxHp*.3&&!G.dead;$('#dmg').style.opacity=(G.dmgFlash*.35+(low?.1+.06*Math.sin(performance.now()/180):0)).toFixed(3);
 }
 
 function startRun(){
   audioInit();const nm=$('#nick').value.trim().slice(0,14);if(nm&&nm!==Profile.data.name){Profile.data.name=nm;Profile.save()}
   Shop.preview=null;newGame();S=stats();attract=null;state='play';lastHud={};showScreen(null);
-  banner('Keep driving',input.touch?'Drag where you want to go':'Arrows or WASD, or drag with the mouse');
+  banner('Keep driving',input.touch?'Chain kills for combos. Tap NITRO when it is full':'Chain kills for combos · Space fires nitro when full');
   $('#moveHint').hidden=!input.touch;
 }
 async function gameOver(){
@@ -1822,7 +1908,7 @@ async function gameOver(){
   const run={time:G.t,kills:G.kills,level:G.level};
   const bonus=Math.floor(G.t/10);const earned=G.coins+bonus;
   const d=Profile.data;d.coins+=earned;const newBest=G.t>(d.best||0);if(newBest)d.best=Math.round(G.t*10)/10;Profile.save();
-  $('#oTime').textContent=fmtTime(G.t);$('#oKills').textContent=G.kills;$('#oLevel').textContent=G.level;$('#oCoins').textContent='+'+earned;
+  $('#oTime').textContent=fmtTime(G.t);$('#oKills').textContent=G.kills;$('#oLevel').textContent=G.level;$('#oCombo').textContent=G.bestCombo;$('#oCoins').textContent='+'+earned;
   const note=$('#oNote');note.className='save-note';note.textContent=(newBest?'New personal best! ':'')+'Saving…';
   const r=await Net.submit(run);note.textContent=(newBest?'New personal best. ':'')+r.msg;if(r.good||newBest)note.classList.add('good');
   refreshMenu();
@@ -1857,11 +1943,13 @@ window.addEventListener('keydown',e=>{
   if(state==='play'&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
   if(state==='levelup'&&['Digit1','Digit2','Digit3','Numpad1','Numpad2','Numpad3'].includes(e.code))choose(+e.code.slice(-1)-1);
   if(state==='menu'&&e.code==='Enter'&&!$('#menu').hidden){e.preventDefault();startRun()}
+  if(['Space','ShiftLeft','ShiftRight','KeyE'].includes(e.code)&&state==='play'&&!e.repeat)useBoost();
   if(e.code==='KeyP'||e.code==='Escape'){if(state==='play')pauseGame();else if(state==='pause')resumeGame()}
 });
 window.addEventListener('keyup',e=>{input.keys[e.code]=false});
 window.addEventListener('blur',()=>{input.keys={};input.joy=null;pauseGame()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame()});
+$('#nitroBtn').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();audioInit();useBoost()});
 const joyEl=$('#joy'),knob=$('#joyKnob');
 cv.addEventListener('pointerdown',e=>{audioInit();if(e.pointerType==='touch'&&!input.touch)setTouch(true);if(state!=='play')return;
   try{cv.setPointerCapture(e.pointerId)}catch(_){}input.joy={id:e.pointerId,ox:e.clientX,oy:e.clientY,a:G.car.a,mag:0};
