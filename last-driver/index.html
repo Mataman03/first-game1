@@ -979,9 +979,9 @@ function explode(x,y,r,dmg,hurtsCar,col){
   shake(r/14);sfx('boom');V.flash=Math.min(2.2,V.flash+r/60);V.flashX=x;V.flashY=y;
 }
 function hurt(z,dmg,kx,ky,src){
-  if(z.dead)return;z.src=src||'hit';z.lastDmg=dmg;z.sdir=(kx||ky)?Math.atan2(ky,kx):Math.atan2(z.y-G.car.y,z.x-G.car.x);z.hp-=dmg;z.flash=.09;if(dmg>=1)addNum(z.x,z.y,z.r*2.7,Math.round(dmg),dmg>=40?'big':'');
+  if(z.dead)return;z.src=src||'hit';z.lastDmg=dmg;z.sdir=(kx||ky)?Math.atan2(ky,kx):Math.atan2(z.y-G.car.y,z.x-G.car.x);z.hp-=dmg;if(dmg>=1)z.flash=.09;if(dmg>=1)addNum(z.x,z.y,z.r*2.7,Math.round(dmg),dmg>=40?'big':'');
   const m=z.type==='boss'?12:z.mass;z.kx+=(kx||0)/m;z.ky+=(ky||0)/m;
-  if(z.hp<=0)killZ(z);else sfx('hit');
+  if(z.hp<=0)killZ(z);else if(dmg>=1)sfx('hit');
 }
 function killZ(z){
   z.dead=true;G.kills++;sfx('splat');
@@ -1175,7 +1175,7 @@ function updateZombies(dt){
   const c=G.car;const vr=viewRadius();const spd=Math.hypot(c.vx,c.vy);
   for(const z of G.z){
     if(z.dead)continue;
-    z.flash-=dt;z.atk-=dt;z.ram-=dt;z.saw-=dt;z.fire-=dt;z.wob+=dt*(z.speed/20);
+    z.flash-=dt;z.atk-=dt;if(z.stun>0)z.stun-=dt;z.ram-=dt;z.saw-=dt;z.fire-=dt;z.wob+=dt*(z.speed/20);
     const dx=c.x-z.x,dy=c.y-z.y;const d=Math.hypot(dx,dy)||1;
     // relocate stragglers
     if(z.type!=='boss'&&d>vr*2.1){const p=findSpawn(40,220);if(p){z.x=p.x;z.y=p.y;z.kx=z.ky=0}continue}
@@ -1187,10 +1187,11 @@ function updateZombies(dt){
     // behaviours
     if(z.type==='spitter'){
       if(d<240){sp*=-.4}else if(d<320)sp=0;
-      z.shoot-=dt;if(z.shoot<=0&&d<380&&!G.dead){z.shoot=rand(2,2.8);fireAcid(z.x,z.y,Math.atan2(dy,dx),210,9*(1+G.t/400))}
+      z.shoot-=dt;if(z.shoot<=0&&d<380&&!G.dead&&!(z.stun>0)){z.shoot=rand(2,2.8);fireAcid(z.x,z.y,Math.atan2(dy,dx),210,9*(1+G.t/400))}
     }else if(z.type==='bloater'){
-      if(d<z.r+c.r+14&&!G.dead){killZ(z);continue}
+      if(d<z.r+c.r+14&&!G.dead&&!(z.stun>0)){killZ(z);continue}
     }else if(z.type==='boss')sp=updateBoss(z,dt,dx,dy,d,mx,my);
+    if(z.stun>0)sp=0;
     if(z.st!=='dash'){z.x+=(mx*sp+z.kx)*dt;z.y+=(my*sp+z.ky)*dt}
     z.kx*=Math.exp(-6*dt);z.ky*=Math.exp(-6*dt);
     if(sp!==0||Math.abs(z.kx)>1)z.a=Math.atan2(my,mx);
@@ -1215,7 +1216,7 @@ function updateZombies(dt){
         if(z.type==='boss'){hurt(z,dmg*.6,0,0,'ram');c.vx=-c.vx*.45;c.vy=-c.vy*.45;shake(6);
           if(z.atk<=0){z.atk=.9;hurtCar(z.dmg*.6)}}
         else{hurt(z,dmg,nx*kb*(boosting?1.6:1),ny*kb*(boosting?1.6:1),'ram');if(!boosting){const loss=Math.min(.6,.12+z.mass*.05);c.vx*=1-loss;c.vy*=1-loss}if(z.dead){shake(z.mass*.8);if(z.mass>=2)G.hitstop=Math.max(G.hitstop,.06);if(G.E.grinder)explode(z.x,z.y,78,42,0,'#ff5a3a')}}
-      }else if(z.atk<=0&&z.dmg>0&&!(boosting&&z.type!=='boss')){z.atk=1;hurtCar(z.dmg);if(G.E.juggernaut)hurt(z,30,nx*300,ny*300,'ram')}
+      }else if(z.atk<=0&&z.dmg>0&&!(z.stun>0)&&!(boosting&&z.type!=='boss')){z.atk=1;hurtCar(z.dmg);if(G.E.juggernaut)hurt(z,30,nx*300,ny*300,'ram')}
       // push out
       const p=rr-d;const share=z.type==='boss'?1:z.mass>3?.6:.15;
       c.x-=nx*p*share;c.y-=ny*p*share;z.x+=nx*p*(1-share);z.y+=ny*p*(1-share);
@@ -1290,17 +1291,26 @@ function updateWeapons(dt){
   }
   // shockwave
   if(L.shock&&(cd.shock||0)<=0){cd.shock=Math.max(2.6,7-.85*L.shock);const R=150+22*L.shock;const dmg=18+11*L.shock;
-    if(G.E.blackhole){G.bh={x:c.x,y:c.y,t:.7,R:R*1.4,dmg:dmg*2.2};G.rings.push({x:c.x,y:c.y,r:R*1.4,max:R*1.4,t:0,dur:.7,col:'#b07aff',inv:true});sfx('nitro')}
+    if(G.E.blackhole){const hp=bhSpot(c,R*1.9);G.bh={x:hp.x,y:hp.y,t:.85,R:R*1.4,dmg:dmg*2.2};G.rings.push({x:hp.x,y:hp.y,r:R*1.4,max:R*1.4,t:0,dur:.7,col:'#b07aff',inv:true});sfx('nitro')}
     else{queryZ(c.x,c.y,R,z=>{const d=Math.hypot(z.x-c.x,z.y-c.y)||1;hurt(z,dmg,(z.x-c.x)/d*520,(z.y-c.y)/d*520,'blast')});
     G.acid=G.acid.filter(a=>dist2(a.x,a.y,c.x,c.y)>R*R);
     G.rings.push({x:c.x,y:c.y,r:0,max:R,t:0,dur:.4,col:'#7fd8ff'});shake(3);sfx('boom')}}
-  if(G.bh){const h=G.bh;h.t-=dt;h.x=lerp(h.x,c.x,Math.min(1,dt*3));h.y=lerp(h.y,c.y,Math.min(1,dt*3));
-    queryZ(h.x,h.y,h.R,z=>{if(z.type==='boss')return;const d=Math.hypot(h.x-z.x,h.y-z.y)||1;const pull=Math.min(d-4,420*dt);z.x+=(h.x-z.x)/d*pull;z.y+=(h.y-z.y)/d*pull});
+  if(G.bh){const h=G.bh;h.t-=dt;
+    queryZ(h.x,h.y,h.R,z=>{if(z.type==='boss')return;z.stun=.3;hurt(z,h.dmg*.5*dt,0,0,'void');if(z.dead)return;const d=Math.hypot(h.x-z.x,h.y-z.y)||1;const pull=Math.min(d-4,420*dt);z.x+=(h.x-z.x)/d*pull;z.y+=(h.y-z.y)/d*pull});
     if(Math.random()<.8){const a=Math.random()*6.28,r=h.R*rand(.6,1);part(h.x+Math.cos(a)*r,h.y+Math.sin(a)*r,-Math.cos(a)*r*1.4,-Math.sin(a)*r*1.4,.5,'#b07aff',rand(3,5),'spark',10,0)}
     if(h.t<=0){G.bh=null;queryZ(h.x,h.y,h.R*.75,z=>{const d=Math.hypot(z.x-h.x,z.y-h.y)||1;hurt(z,h.dmg,(z.x-h.x)/d*700,(z.y-h.y)/d*700,'void')});
       G.acid=G.acid.filter(a=>dist2(a.x,a.y,h.x,h.y)>h.R*h.R);G.rings.push({x:h.x,y:h.y,r:0,max:h.R,t:0,dur:.4,col:'#d4b0ff',fill:true});shake(7);sfx('boom');V.flash=2}}
 }
 
+// black hole target: the densest crowd near the car, kept clear of the car itself
+function bhSpot(c,range){
+  const fa=Math.atan2(c.vy,c.vx),mv=Math.hypot(c.vx,c.vy)>40;let best=null,bs=0;
+  for(const z of G.z){if(z.dead||z.type==='boss')continue;const dc=Math.hypot(z.x-c.x,z.y-c.y);if(dc>range||dc<60)continue;
+    let n=0;queryZ(z.x,z.y,110,()=>{n++});if(n>bs){bs=n;best=z}}
+  let x,y;if(best){x=best.x;y=best.y}else{const a=mv?fa:c.a;x=c.x+Math.cos(a)*200;y=c.y+Math.sin(a)*200}
+  const dx=x-c.x,dy=y-c.y,d=Math.hypot(dx,dy)||1,MIN=170;if(d<MIN){const a=d>1?Math.atan2(dy,dx):(mv?fa:c.a);x=c.x+Math.cos(a)*MIN;y=c.y+Math.sin(a)*MIN}
+  return{x,y};
+}
 function updateProjectiles(dt){
   const c=G.car;
   for(const b of G.bul){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
