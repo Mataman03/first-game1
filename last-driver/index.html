@@ -220,6 +220,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 #nitroBtn.ready{animation:npulse .8s ease-in-out infinite alternate}
 #nitroBtn.ready .nlab{color:var(--paper)}
 #nitroBtn.on{background:#5cc8ff}
+#nitroBtn.cool{filter:grayscale(1) brightness(.7)}
 #nitroBtn.on .nfill{background:linear-gradient(0deg,#5cc8ff,#d8f4ff)}
 @keyframes npulse{from{box-shadow:4px 4px 0 var(--ink),0 0 0 0 rgba(255,178,63,.7)}to{box-shadow:4px 4px 0 var(--ink),0 0 0 12px rgba(255,178,63,0)}}
 .touch #nitroKey{display:none}
@@ -853,6 +854,7 @@ function stats(){
 const COMBO_WINDOW=2.2;
 function comboMult(){const c=G.combo;return c>=50?5:c>=25?3:c>=10?2:1}
 function addNum(x,y,h,v,kind){if(G.nums.length>60)G.nums.shift();G.nums.push({x:x+rand(-6,6),y:y+rand(-6,6),h,v,kind:kind||'',t:0,life:.75})}
+const NITRO_CD=8; // seconds after a nitro ends before it starts charging again
 function useBoost(){if(!G||state!=='play'||G.dead||G.boost<100||G.boostT>0)return;G.boost=0;G.boostT=3.4;sfx('nitro');shake(5);banner('NITRO!',null)}
 function slowMo(sec){if(G.slowCd>0)return;G.slow=Math.max(G.slow,sec);G.slowCd=sec+3}
 let S=null;
@@ -987,7 +989,7 @@ function killZ(z){
   z.dead=true;G.kills++;sfx('splat');
   if(!G.dead){const before=comboMult();G.combo++;G.comboT=COMBO_WINDOW;G.bestCombo=Math.max(G.bestCombo,G.combo);sfx('combo',G.combo);
     if(comboMult()>before){sfx('tier');addNum(G.car.x,G.car.y,60,'×'+comboMult(),'tier')}
-    if(G.boostT<=0)G.boost=Math.min(100,G.boost+(z.type==='boss'?100:2.5+Math.min(4,G.combo/12)));
+    if(G.boostT<=0&&!(G.boostCd>0))G.boost=Math.min(100,G.boost+(z.type==='boss'?50:1.4+Math.min(2.1,G.combo/20)));
     G.recent.push(G.t);while(G.recent.length&&G.t-G.recent[0]>.4)G.recent.shift();
     if(G.recent.length>=7){slowMo(.55);G.recent.length=0}}
   const kind=z.type==='boss'?'fly':deathKind(z);
@@ -1115,7 +1117,8 @@ function update(dt){
   S=stats();
   const c=G.car;
   if(!G.dead)G.t+=dt;
-  if(G.boostT>0){G.boostT-=dt;const bx=Math.cos(c.a),by=Math.sin(c.a);for(let i=0;i<3;i++)part(c.x-bx*26+rand(-5,5),c.y-by*26+rand(-5,5),-bx*rand(120,220)+rand(-30,30),-by*rand(120,220)+rand(-30,30),rand(.2,.35),pick(['#ffd34a','#ff8a2a','#5cc8ff']),rand(3,5),'fire',8,rand(-10,20))}
+  if(G.boostCd>0)G.boostCd-=dt;
+  if(G.boostT>0){G.boostT-=dt;if(G.boostT<=0)G.boostCd=NITRO_CD;const bx=Math.cos(c.a),by=Math.sin(c.a);for(let i=0;i<3;i++)part(c.x-bx*26+rand(-5,5),c.y-by*26+rand(-5,5),-bx*rand(120,220)+rand(-30,30),-by*rand(120,220)+rand(-30,30),rand(.2,.35),pick(['#ffd34a','#ff8a2a','#5cc8ff']),rand(3,5),'fire',8,rand(-10,20))}
   if(G.comboT>0){G.comboT-=dt;if(G.comboT<=0){if(G.combo>=10){const bonus=Math.floor(G.combo/5);G.coins+=bonus;banner('Combo '+G.combo+'!','+'+bonus+' coins');sfx('comboEnd')}G.combo=0}}
   // ---- car control: one stick. Direction = where to go, distance from centre = how fast.
   let targetA=null,mag=0;
@@ -2207,7 +2210,7 @@ function updateHud(){
   const cb=$('#combo');if(G.combo>=3&&!G.dead){cb.hidden=false;if(lastHud.combo!==G.combo){lastHud.combo=G.combo;$('#comboN').textContent=G.combo;cb.classList.remove('pop');void cb.offsetWidth;cb.classList.add('pop')}
     const m=comboMult();if(lastHud.mult!==m){lastHud.mult=m;$('#comboMult').textContent='×'+m;cb.dataset.tier=m}$('#comboBar').style.width=(100*clamp(G.comboT/COMBO_WINDOW,0,1)).toFixed(1)+'%'}else{cb.hidden=true;lastHud.combo=-1}
   // nitro
-  const nb=$('#nitroBtn');$('#nitroFill').style.height=(G.boostT>0?100*G.boostT/3.4:G.boost).toFixed(1)+'%';nb.classList.toggle('ready',G.boost>=100&&G.boostT<=0);nb.classList.toggle('on',G.boostT>0);
+  const nb=$('#nitroBtn');$('#nitroFill').style.height=(G.boostT>0?100*G.boostT/3.4:G.boost).toFixed(1)+'%';nb.classList.toggle('ready',G.boost>=100&&G.boostT<=0);nb.classList.toggle('on',G.boostT>0);nb.classList.toggle('cool',G.boostCd>0&&G.boostT<=0);
   const low=c.hp<s.maxHp*.3&&!G.dead;$('#dmg').style.opacity=(G.dmgFlash*.35+(low?.1+.06*Math.sin(performance.now()/180):0)).toFixed(3);
 }
 
