@@ -1770,6 +1770,7 @@ function buildCar(sk){
     const h2=h.clone();h2.position.y=13;bull.add(h2);for(const z of [-Wd/2+3,0,Wd/2-3]){const v=new THREE.Mesh(new THREE.BoxGeometry(3,9,2),m);v.position.set(hl+3,10,z);bull.add(v)}}
   bull.visible=false;tilt.add(bull);
   // ---- upgrade mods: parts bolted onto the car as upgrades are taken (id, min level) ----
+  // every anchor is derived from this car's own shape: hood, trunk/bed, roof, flanks, bumpers, turret height
   const mods=[],fx={};
   const glowM=c=>basic(c,{map:TEX.glow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
   const reg=(id,lv,m,parent)=>{m.visible=false;(parent||tilt).add(m);mods.push({id,lv,m});return m};
@@ -1777,59 +1778,73 @@ function buildCar(sk){
   const M=(id,lv,geo,mat,x,y,z,w)=>reg(id,lv,part(geo,mat,x,y,z,w));
   const grp=(id,lv,x,y,z)=>{const q=new THREE.Group();q.position.set(x,y,z);return reg(id,lv,q)};
   const steel=lam('#5d636c'),dark=lam('#2b2f35'),chrome=lam('#c9ced6',{emissive:'#262626'}),gold=lam('#f2c54a',{emissive:'#5a3a00'});
-  const sZ=Wd/2;
+  const sZ=Wd/2,cylX=(r,l)=>new THREE.CylinderGeometry(r,r,l,10).rotateZ(Math.PI/2);
   const roofX=sk.long?-6:sk.bed?8:-3,roofLen=sk.long?L*.66:sk.bed?16:L*.5-4,roofTop=top+(sk.long?16:sk.bed?10:9),roofW=Wd-4;
-  const rear=sk.long?{x:-20,y:roofTop}:{x:-hl+6,y:top+(sk.bed?1:0)};
-  const cylX=(r,l)=>new THREE.CylinderGeometry(r,r,l,10).rotateZ(Math.PI/2);
-  // Tesla Coil: coil tower on the trunk, more rings with level, glowing ball
-  {const q=grp('tesla',1,rear.x,rear.y,0);q.add(part(new THREE.CylinderGeometry(3.4,4,2.5,12),dark,0,1.25,0));q.add(part(new THREE.CylinderGeometry(1.3,1.6,12,8),lam('#b87333'),0,8,0));
-    for(const [lv,h] of [[1,6],[3,9],[5,12]]){const r=part(new THREE.TorusGeometry(3,.75,6,16).rotateX(Math.PI/2),chrome,0,h,0,.4);reg('tesla',lv,r,q)}
-    fx.ball=part(new THREE.SphereGeometry(3,12,10),basic('#aef4ff'),0,15.5,0,.5);q.add(fx.ball);fx.ballGlow=part(new THREE.PlaneGeometry(1,1),glowM('#4fd8ff'),0,15.5,0,0);q.add(fx.ballGlow);fx.ballGlow.renderOrder=7}
-  // Mine Dropper: rack on the rear bumper with mines stacked on it
-  M('mines',1,new THREE.BoxGeometry(3,3,Wd-4),dark,-hl-1.5,6,0);
-  for(const [lv,z] of [[1,0],[3,-7],[5,7]]){const q=grp('mines',lv,-hl-3.6,8.2,z);q.add(part(new THREE.CylinderGeometry(3,3,1.6,12).rotateZ(Math.PI/2),lam('#3a3f2a'),0,0,0));q.add(part(new THREE.SphereGeometry(.9,6,6),basic('#ff3a2a'),-1,0,0,0))}
-  // Homing Rockets: missile pods on the flanks
-  for(const [lv,sd] of [[1,-1],[4,1]]){const q=grp('rockets',lv,-1,top-.5,sd*(sZ+3));q.add(part(new THREE.BoxGeometry(16,4,5),lam('#4d5a3a'),0,0,0));
+  // turret: on the roof (above the taxi sign / police bar), on top of the ice cream for the truck
+  const turX=sk.long?-6:sk.bed?8:0,turY=sk.long?51:roofTop+(sk.taxi||sk.police?6.5:4);
+  const cap=turY-1.5; // nothing off the roof may reach the turret barrel's sweep
+  const hoodS=sk.long?L*.3+5:sk.bed?17:-2+L*.25,hoodLen=hl-hoodS,hoodX=(hoodS+hl)/2;
+  const wF=hl-10,wR=-hl+9; // wheel centres
+  // rear deck (trunk / pickup bed / truck roof) holds tesla, magnet and antenna
+  const deckY=sk.long?roofTop:top+(sk.bed?1.5:0);
+  const tes=sk.long?{x:-20,z:0}:sk.bed?{x:-hl+5,z:-4.5}:{x:-hl+(sk.spoiler?7:6),z:0};
+  const mag=sk.long?{x:-20,z:8}:sk.bed?{x:-hl+8.5,z:8.5}:{x:sk.spoiler?-hl+6.5:tes.x,z:sZ-3.5};
+  // Tesla Coil: coil tower on the rear deck, more rings with level, glowing ball
+  {const q=grp('tesla',1,tes.x,deckY,tes.z);q.scale.setScalar(Math.min(1,(cap-deckY)/15.5));
+    q.add(part(new THREE.CylinderGeometry(3.2,3.8,2.5,12),dark,0,1.25,0));q.add(part(new THREE.CylinderGeometry(1.2,1.5,9,8),lam('#b87333'),0,7,0));
+    for(const [lv,h] of [[1,4.8],[3,7.2],[5,9.6]])reg('tesla',lv,part(new THREE.TorusGeometry(2.9,.7,6,16).rotateX(Math.PI/2),chrome,0,h,0,.4),q);
+    fx.ball=part(new THREE.SphereGeometry(2.7,12,10),basic('#aef4ff'),0,12.8,0,.5);q.add(fx.ball);fx.ballGlow=part(new THREE.PlaneGeometry(1,1),glowM('#4fd8ff'),0,12.8,0,0);q.add(fx.ballGlow);fx.ballGlow.renderOrder=7}
+  // Magnet: horseshoe magnet on a short post at the deck corner, grows with level
+  {const q=grp('magnet',1,mag.x,deckY,mag.z);q.add(part(new THREE.CylinderGeometry(.6,.6,3,6),dark,0,1.5,0,.3));
+    const hs=new THREE.Group();hs.position.y=3.6;q.add(hs);fx.magnet=hs;const red=lam('#e0342c');const hq=new THREE.Group();hq.rotation.y=Math.PI/2;hs.add(hq);
+    hq.add(part(new THREE.BoxGeometry(2,2,8),red,0,0,0));for(const z of [-3,3]){hq.add(part(new THREE.BoxGeometry(2,5,2),red,0,3.5,z));hq.add(part(new THREE.BoxGeometry(2.1,1.6,2.1),chrome,0,6.6,z,.3))}}
+  // Quick Learner: whip antenna leaning back off the rear corner, graduation cap at max
+  {const an=sk.long?{x:-hl+1.5,y:top,z:-(sZ-3)}:sk.bed?{x:-hl+3,y:top+5.5,z:-(sZ-1)}:(sk.spoiler?{x:-hl+1,y:deckY,z:-(sZ-1.5)}:{x:-hl+3,y:deckY,z:-(sZ-3)});
+    const q=grp('learn',1,an.x,an.y,an.z);q.rotation.z=.6;q.add(part(new THREE.CylinderGeometry(.35,.35,16,5),dark,0,8,0,0));q.add(part(new THREE.SphereGeometry(1.4,8,6),basic('#5fb8ff'),0,16,0,.3));
+    reg('learn',5,part(new THREE.BoxGeometry(5,.8,5),lam('#151515'),0,18,0,.35),q);reg('learn',5,part(new THREE.BoxGeometry(2.6,2,2.6),lam('#151515'),0,16.9,0,0),q)}
+  // Mine Dropper: rack on the rear bumper with mines (army jeep: split around its spare wheel)
+  const mineAt=sk.camo?[[1,-8.5,0],[3,8.5,0],[5,8.5,6.2]]:[[1,0,0],[3,-8,0],[5,8,0]];
+  if(!sk.camo)M('mines',1,new THREE.BoxGeometry(3,3,Wd-4),dark,-hl-1.5,6.5,0);
+  for(const [lv,z,dy] of mineAt){if(sk.camo&&!dy)M('mines',lv,new THREE.BoxGeometry(3,3,5),dark,-hl-1.5,6.5,z);
+    const q=grp('mines',lv,-hl-3.6,8.7+dy,z);q.add(part(new THREE.CylinderGeometry(3,3,1.6,12).rotateZ(Math.PI/2),lam('#3a3f2a'),0,0,0));q.add(part(new THREE.SphereGeometry(.9,6,6),basic('#ff3a2a'),-1,0,0,0))}
+  // Fire Trail: exhaust pipes under the rear bumper with flames
+  fx.flames=[];for(const z of [-7,7]){M('fire',1,cylX(1.2,6),chrome,-hl-1,2.6,z);const f=M('fire',1,new THREE.PlaneGeometry(1,1),glowM('#ff8a2a'),-hl-6,2.6,z,0);f.renderOrder=7;fx.flames.push(f)}
+  // hood: turbo scoop in the middle, repair beacon and fuel can in the corners
+  const scL=Math.min(9,hoodLen-2.5);
+  M('nitro',1,new THREE.BoxGeometry(scL,3.5,8),dark,hoodX,top+1.75,0);M('nitro',1,new THREE.BoxGeometry(1,2,6),lam('#0c0c0e'),hoodX+scL/2+.1,top+2,0,0);
+  M('nitro',3,new THREE.CylinderGeometry(Math.min(2.6,scL/2-.4),Math.min(2.6,scL/2-.4),4,12),chrome,hoodX,top+5,0);
+  M('fire',3,new THREE.BoxGeometry(Math.min(5,hoodLen-1.5),7,3),lam('#c8302a'),hoodX,top+3.5,sZ-3);
+  {const q=grp('repair',1,hoodX,top,-(sZ-3));q.add(part(new THREE.BoxGeometry(Math.min(4,hoodLen-1.5),1.5,4),dark,0,.75,0));
+    const gm=basic('#5bff7a');fx.crossMat=gm;q.add(part(new THREE.BoxGeometry(1.3,4,1.3),gm,0,3.6,0,.3));q.add(part(new THREE.BoxGeometry(1.3,1.3,4),gm,0,3.6,0,.3))}
+  // toolbox: roof (bed: in the bed, truck: roof front corner)
+  const tb=sk.long?{x:roofX+roofLen/2-4,y:roofTop,z:roofW/2-3.5}:sk.bed?{x:-hl+16,y:deckY,z:5}:{x:roofX-roofLen/2+2.5,y:roofTop,z:roofW/2-3.5};
+  M('repair',3,new THREE.BoxGeometry(5,2.5,4),lam('#d8302c'),tb.x,tb.y+1.25,tb.z);
+  // Shockwave: glowing emitter belt around the car, corner emitters
+  fx.ring=M('shock',1,new THREE.TorusGeometry(1,.05,6,48).rotateX(Math.PI/2),basic('#5fe0ff',{transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}),0,2.5,0,0);fx.ring.scale.set(hl+5,1,sZ+6);
+  for(const x of [hl-3,-hl+3])for(const sd of [-1,1])M('shock',3,new THREE.BoxGeometry(4,3,1.2),basic('#7fe8ff'),x,6,sd*(sZ+1),.4);
+  // flanks: rocket pods, armor, frame bars, turbo side pipes, gold stripe
+  const gap=(wF-5.7)-(wR+5.7),gapX=(wF+wR)/2;
+  for(const [lv,sd] of [[1,-1],[4,1]]){const q=grp('rockets',lv,-1,top+2.5,sd*(sZ+3));q.add(part(new THREE.BoxGeometry(16,4,5),lam('#4d5a3a'),0,0,0));
     for(const dz of [-1.3,1.3]){q.add(part(cylX(1.2,11),lam('#e9e9e2'),1,3,dz,.35));q.add(part(new THREE.ConeGeometry(1.2,3.5,8).rotateZ(-Math.PI/2),lam('#d8302c'),8.2,3,dz,.35))}
     reg('rockets',5,part(new THREE.BoxGeometry(5,2,5.4),lam('#ffc23a'),-5.5,0,0,.3),q)}
-  // Fire Trail: exhaust pipes with flames, jerry can later
-  fx.flames=[];for(const z of [-Wd/2+5,Wd/2-5]){M('fire',1,cylX(1.6,6),chrome,-hl-1,4.5,z);const f=M('fire',1,new THREE.PlaneGeometry(1,1),glowM('#ff8a2a'),-hl-6,4.5,z,0);f.renderOrder=7;fx.flames.push(f)}
-  M('fire',3,new THREE.BoxGeometry(6,7,3),lam('#c8302a'),sk.bed?-hl+20:-hl+11,top+(sk.long?0:3.5),-sZ+3);
-  // Shockwave: glowing emitter belt around the car
-  fx.ring=M('shock',1,new THREE.TorusGeometry(1,.05,6,48).rotateX(Math.PI/2),basic('#5fe0ff',{transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}),0,2.5,0,0);fx.ring.scale.set(hl+5,1,sZ+6);
-  for(const [x,z] of [[hl-3,sZ+1],[hl-3,-sZ-1],[-hl+3,sZ+1],[-hl+3,-sZ-1]])M('shock',3,new THREE.BoxGeometry(4,3,1.2),basic('#7fe8ff'),x,7,z>0?z:z,.4);
-  // Turbo Engine: hood scoop, then a chrome blower, then side pipes
-  M('nitro',1,new THREE.BoxGeometry(9,3.5,8),dark,hl-6,top+1.75,0);M('nitro',1,new THREE.BoxGeometry(1,2,6),lam('#0c0c0e'),hl-1.4,top+2,0,0);
-  M('nitro',3,new THREE.CylinderGeometry(2.6,2.6,4,12),chrome,hl-6,top+5,0);
-  for(const sd of [-1,1])M('nitro',5,cylX(1.3,L*.6),chrome,-2,3.2,sd*(sZ+1.6));
-  // Armor Plates: door plates, wheel-arch plates, then spikes
-  for(const sd of [-1,1]){M('armor',1,new THREE.BoxGeometry(L*.46,bodyH*.75,1.3),steel,-1,5+bodyH/2,sd*(sZ+.6));
-    for(const x of [-hl+9,hl-10])M('armor',3,new THREE.BoxGeometry(13,5,1.4),steel,x,10.5,sd*(sZ+.8));
-    for(const x of [-8,-1,6])M('armor',5,new THREE.ConeGeometry(1.3,4.5,6).rotateX(sd*Math.PI/2),lam('#d7dbe2'),x,5+bodyH/2,sd*(sZ+3.4),.35)}
-  // Reinforced Frame: side nerf bars, roof rails, spare tire
-  for(const sd of [-1,1]){M('engine',1,cylX(1.2,L*.55),lam('#2e2e30'),0,2.8,sd*(sZ+2.6));M('engine',3,cylX(.9,roofLen),lam('#2e2e30'),roofX,roofTop+1.4,sd*(roofW/2-.5),.4)}
-  M('engine',5,new THREE.CylinderGeometry(5,5,3,14),lam('#141416'),roofX-roofLen/2+4,roofTop+2.5,sk.long?-5:0);
-  // Self Repair: blinking green cross beacon, toolbox later
-  {const q=grp('repair',1,roofX+roofLen/2-3,roofTop,-(roofW/2-2.5));q.add(part(new THREE.BoxGeometry(4,1.5,4),dark,0,.75,0));
-    const gm=basic('#5bff7a');fx.crossMat=gm;q.add(part(new THREE.BoxGeometry(1.3,4,1.3),gm,0,3.5,0,.3));q.add(part(new THREE.BoxGeometry(1.3,1.3,4),gm,0,3.5,0,.3))}
-  M('repair',3,new THREE.BoxGeometry(6,3.5,4),lam('#d8302c'),roofX-1,roofTop+1.75,roofW/2-3);
-  // Magnet: horseshoe magnet on a mast, grows with level
-  {const q=grp('magnet',1,sk.long?roofX+roofLen/2-4:roofX-roofLen/2+3,roofTop,roofW/2-2.5);q.add(part(new THREE.CylinderGeometry(.6,.6,8,6),dark,0,4,0,.3));
-    const hs=new THREE.Group();hs.position.y=9;q.add(hs);fx.magnet=hs;const red=lam('#e0342c');
-    hs.add(part(new THREE.BoxGeometry(2,2,8),red,0,0,0));for(const z of [-3,3]){hs.add(part(new THREE.BoxGeometry(2,5,2),red,0,3.5,z));hs.add(part(new THREE.BoxGeometry(2.1,1.6,2.1),chrome,0,6.6,z,.3))}}
-  // Quick Learner: radio antenna, graduation cap at max
-  {const q=grp('learn',1,-hl+3,top,-(sZ-3));q.add(part(new THREE.CylinderGeometry(.35,.35,20,5),dark,0,10,0,0));q.add(part(new THREE.SphereGeometry(1.4,8,6),basic('#5fb8ff'),0,20,0,.3));
-    reg('learn',5,part(new THREE.BoxGeometry(6,.8,6),lam('#151515'),0,22.2,0,.35),q);reg('learn',5,part(new THREE.BoxGeometry(3,2,3),lam('#151515'),0,21,0,0),q)}
-  // Driver's Luck: golden hubcaps, gold pinstripe, gold horseshoe on the grille
+  for(const sd of [-1,1]){
+    M('armor',1,new THREE.BoxGeometry(Math.min(L*.32,gap),bodyH*.75,1.3),steel,gapX,5+bodyH/2,sd*(sZ+.6));
+    for(const x of [wR,wF])M('armor',3,new THREE.BoxGeometry(10,4.5,1.4),steel,x,5+bodyH*.62,sd*(sZ+1.5));
+    for(const k of [-1,0,1])M('armor',5,new THREE.ConeGeometry(1.3,4.5,6).rotateX(sd*Math.PI/2),lam('#d7dbe2'),gapX+k*Math.min(7,gap/3.2),5+bodyH/2,sd*(sZ+3.4),.35);
+    M('engine',1,cylX(1.2,L*.55),lam('#2e2e30'),0,2.8,sd*(sZ+3.8));
+    M('engine',3,cylX(.9,roofLen),lam('#2e2e30'),roofX,roofTop+1.4,sd*(roofW/2-.5),.4);
+    for(const x of [hl+.5,-hl-.5])M('engine',5,new THREE.BoxGeometry(3,3,3),steel,x,3,sd*(sZ-1.5));
+    M('nitro',5,cylX(1.3,gap),chrome,gapX,3.2,sd*(sZ+1.6));
+    M('luck',3,new THREE.BoxGeometry(L*.9,1,.6),gold,0,5+bodyH*.62,sd*(sZ+.35),0)}
+  // Driver's Luck: golden hubcaps and a gold horseshoe on the grille
   const hubGeo=new THREE.CylinderGeometry(3.2,3.2,4.6,12).rotateX(Math.PI/2);
-  for(const z of [-Wd/2+1,Wd/2-1])for(const x of [-hl+9,hl-10]){const h=part(hubGeo,gold,x,5.2,z,0);mods.push({id:'luck',lv:1,m:h});h.visible=false;g.add(h)}
-  for(const sd of [-1,1])M('luck',3,new THREE.BoxGeometry(L*.9,1,.6),gold,0,5+bodyH*.62,sd*(sZ+.35),0);
+  for(const z of [-Wd/2+1,Wd/2-1])for(const x of [wR,wF]){const h=part(hubGeo,gold,x,5.2,z,0);mods.push({id:'luck',lv:1,m:h});h.visible=false;g.add(h)}
   {const q=grp('luck',5,hl+.9,9.5,0);for(const sd of [-1,1]){const a=part(new THREE.BoxGeometry(1,5,1.3),gold,0,0,sd*2.2,.3);a.rotation.x=-sd*.25;q.add(a)}q.add(part(new THREE.BoxGeometry(1,1.3,5),gold,0,-2.6,0,.3))}
   // evolutions: neon underglow in the color of the latest evolution
   fx.under=new THREE.Mesh(new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),glowM('#b07aff'));fx.under.scale.set(L*1.9,1,Wd*2.6);fx.under.position.y=1.2;fx.under.renderOrder=3;fx.under.visible=false;g.add(fx.under);
   // headlights
   const spot=new THREE.SpotLight('#fff2d6',1.6,560,.55,.55,1.2);spot.position.set(hl,12,0);const tg=new THREE.Object3D();tg.position.set(hl+240,0,0);g.add(tg);spot.target=tg;g.add(spot);
-  return{g,tilt,wheels,bull,pol,len:L,mods,fx};
+  return{g,tilt,wheels,bull,pol,len:L,mods,fx,turX,turY};
 }
 function ensureCar(sk){
   if(carRig&&carSkinId===sk.id)return;
@@ -1915,12 +1930,12 @@ function render3D(now,dt){
     if(Lv.fire){const sp=clamp(Math.hypot(c.vx,c.vy)/220,0,1.2);for(const f of fx.flames){const s=(.55+.45*Math.random())*(.5+.6*sp)*(1+Lv.fire*.12)*(G.E.napalm?1.4:1);f.scale.set(14*s,1,7*s);f.position.x=-carRig.len/2-3-5*s;f.quaternion.copy(camera.quaternion)}}
     if(Lv.shock){const k=.45+.35*Math.sin(now/180)+(G.cd&&G.cd.shock>Math.max(2.6,7-.85*Lv.shock)-.3?.8:0);fx.ring.material.color.set(G.E.blackhole?'#b07aff':'#5fe0ff').multiplyScalar(k)}
     if(Lv.repair)fx.crossMat.color.set(Math.floor(now/400)%2?'#5bff7a':'#1d6a2c');
-    if(Lv.magnet){fx.magnet.scale.setScalar(.62+Lv.magnet*.08);fx.magnet.rotation.y=Math.sin(now/600)*.4}
+    if(Lv.magnet){fx.magnet.scale.setScalar(.55+Lv.magnet*.07);fx.magnet.rotation.y=Math.sin(now/600)*.15}
    }
    const evo=Lv&&G.E?['storm','grinder','napalm','blackhole','swarm','juggernaut'].filter(k=>G.E[k]):[];fx.under.visible=evo.length>0;
    if(evo.length){const EC={storm:'#4fd8ff',grinder:'#ff3a3a',napalm:'#ff8a2a',blackhole:'#b07aff',swarm:'#ffd23a',juggernaut:'#5bff7a'};fx.under.material.color.set(EC[evo[Math.floor(now/1500)%evo.length]]).multiplyScalar(.55+.15*Math.sin(now/200))}
    const tb=turretObj.userData.br;if(tb&&inRun&&G){const tl=G.L.turret||0;tb[1].visible=tl>=3;tb[0].position.z=tl>=3?-2.3:0;const ln=tl>=5?1.35:1;for(const b of tb){b.scale.x=ln;b.position.x=10*ln;b.material.color.set(G.E.storm?'#7fe0ff':'#5a606a')}}}
-  turretObj.visible=inRun&&!G.dead&&G.L.turret>0;if(turretObj.visible){turretObj.position.set(c.x,(sk.long?40:sk.bed?24:27),c.y);turretObj.rotation.y=-c.turretA}
+  turretObj.visible=inRun&&!G.dead&&G.L.turret>0;if(turretObj.visible){turretObj.position.set(c.x+Math.cos(c.a)*carRig.turX,carRig.turY,c.y+Math.sin(c.a)*carRig.turX);turretObj.rotation.y=-c.turretA}
   const gr=G.E&&G.E.grinder;const ns=inRun&&!G.dead?(gr?6:Math.min(4,G.L.saws)):0;const R=gr?98:G.L.saws>=5?80:68,sr=gr?21:G.L.saws>=5?16:12;
   sawMeshes.forEach((m,i)=>{m.visible=i<ns;if(!m.visible)return;const a=G.sawA+i/ns*Math.PI*2;m.position.set(c.x+Math.cos(a)*R,10,c.y+Math.sin(a)*R);m.scale.set(sr,1,sr);m.rotation.y=now/40});
   // zombies
