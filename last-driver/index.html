@@ -112,6 +112,13 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   display:flex;align-items:center;justify-content:center;gap:14px;transition:transform .08s,box-shadow .08s}
 .drive:hover{background:#ffc464}
 .drive:active{transform:translate(5px,5px);box-shadow:2px 2px 0 var(--ink)}
+.cont{border:3px solid var(--sodium);border-radius:14px;background:rgba(7,8,11,.82);color:var(--sodium);font:400 24px var(--display);padding:8px 16px;box-shadow:5px 5px 0 var(--ink);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:transform .08s,box-shadow .08s}
+.cont small{font:700 13px var(--body);color:#e8e2d4;letter-spacing:.04em;text-align:right}
+.cont:hover{background:rgba(30,26,14,.92)}
+.cont:active{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--ink)}
+.cont[hidden]{display:none}
+.cont .ct{white-space:nowrap}
 .drive kbd{font-size:13px;background:rgba(7,8,11,.12);border:2px solid var(--ink);color:var(--ink);border-radius:6px}
 .sq{width:104px;height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:400 17px var(--display);cursor:pointer;transition:transform .08s,box-shadow .08s;position:relative}
 .sq svg{width:38px;height:38px}
@@ -276,6 +283,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   .dock-mid{grid-area:mid}.sq.l{grid-area:l}.sq.r{grid-area:r}
   .sq{width:auto;height:74px;flex-direction:row}
   .drive{font-size:30px}
+  .cont{font-size:20px;padding:8px 12px}.cont small{font-size:11.5px}
   .stage{background:linear-gradient(180deg,rgba(9,11,17,.6) 0%,rgba(9,11,17,0) 12%,rgba(9,11,17,0) 70%,rgba(9,11,17,.9) 84%)}
   .stage-grid{grid-template-columns:1fr;align-content:start;gap:14px}
   .g-head h2{font-size:26px}
@@ -372,6 +380,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
             <label for="nick">Your plate is your leaderboard name · <span id="mSkin">Family Sedan</span></label>
             <div class="ilplate"><span class="strip">LD<i>ZONE 1</i></span><input id="nick" maxlength="14" autocomplete="off" spellcheck="false"></div>
           </div>
+          <button class="cont" id="contBtn" hidden><span class="ct">&#9654; Continue drive</span><small id="contInfo"></small></button>
           <button class="drive" id="playBtn">Drive! <kbd>Enter</kbd></button>
           <p class="how">Drag in any direction. The farther you drag, the faster you go. Chain kills for combo multipliers and fill your nitro.</p>
         </div>
@@ -432,7 +441,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
         <button class="btn" id="muteToggle">Sound: on</button>
         <button class="btn" id="musicToggle">Music: on</button>
         <button class="btn" id="engineToggle">Engine sound: on</button>
-        <button class="btn" id="quitBtn">Quit to menu</button>
+        <button class="btn" id="quitBtn">Save &amp; quit to menu</button>
       </div>
     </div>
   </section>
@@ -554,11 +563,18 @@ function makeRoads(){
 }
 function segDist(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay;const l=dx*dx+dy*dy;let t=l?((px-ax)*dx+(py-ay)*dy)/l:0;t=t<0?0:t>1?1:t;const x=ax+dx*t-px,y=ay+dy*t-py;return Math.sqrt(x*x+y*y)}
 function distToRoads(px,py,skip){let best=1e9;for(let r=0;r<roads.length;r++){if(r===skip)continue;const pl=roads[r];for(let i=0;i<pl.length-1;i++){const d=segDist(px,py,pl[i][0],pl[i][1],pl[i+1][0],pl[i+1][1]);if(d<best)best=d}}return best}
+let CITY_SEED=0,RESUME_CITY=null; // RESUME_CITY={seed,theme} rebuilds a saved city exactly
+const mulberry32=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
 function genCity(){
+  if(RESUME_CITY){THEME=THEMES.find(t=>t.id===RESUME_CITY.theme)||THEMES[0];CITY_SEED=RESUME_CITY.seed;RESUME_CITY=null;KEEP_THEME=false}
+  else{if(KEEP_THEME)KEEP_THEME=false;else pickTheme();CITY_SEED=(Math.random()*4294967296)>>>0}
+  const R0=Math.random;Math.random=mulberry32(CITY_SEED);try{genCityLayout()}finally{Math.random=R0}
+}
+function genCityLayout(){
   const N=MAPN;const U=255;
   grid=new Uint8Array(N*N).fill(U);bIndex=new Int16Array(N*N).fill(-1);
   buildings=[];lights=[];trees=[];props=[];fountains=[];parks=[];roadXs=[];roadYs=[];
-  if(KEEP_THEME)KEEP_THEME=false;else pickTheme();roads=makeRoads();
+  roads=makeRoads();
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<2||y<2||x>=N-2||y>=N-2||distToRoads((x+.5)*TILE,(y+.5)*TILE)<=ROAD_HW+6)grid[y*N+x]=T_ROAD}
   if(roads.roundabout){const ra=roads.roundabout;for(let y=0;y<N;y++)for(let x=0;x<N;x++){const d=Math.hypot((x+.5)*TILE-ra.x,(y+.5)*TILE-ra.y);if(d<ra.r-ROAD_HW-20&&x>2&&y>2&&x<N-3&&y<N-3)grid[y*N+x]=T_GRASS}}
   // regions of non-road tiles
@@ -1101,7 +1117,7 @@ function hurtCar(d){
   const c=G.car;if(G.dead)return;d*=1-S.armor;c.hp-=d;G.dmgFlash=Math.min(.6,G.dmgFlash+.25);shake(3);sfx('hurt');
   if(c.hp<=0){c.hp=0;carDie()}
 }
-function carDie(){sfx('die');
+function carDie(){sfx('die');clearRun();
   G.dead=true;G.deadT=0;state='dead';const c=G.car;
   explode(c.x,c.y,110,999,0,'#ff8a3a');for(let i=0;i<30;i++)part(c.x,c.y,rand(-60,60),rand(-60,60),rand(1,2.4),'#2c2c32',rand(14,26),'smoke');
 }
@@ -2030,7 +2046,7 @@ function render3D(now,dt){
 let choiceOpts=[];
 function openChoice(){
   const chest=G.pendingChest>0;
-  if(chest)G.pendingChest--;else G.pending--;
+  if(chest)G.pendingChest--;else G.pending--;G.choiceChest=chest;
   state='levelup';
   const avail=UPG.filter(u=>G.L[u.id]<u.max);
   const pool=[];for(const u of avail){const owned=G.L[u.id]>0;const isWeapon=u.tag==='Weapon';const nW=UPG.filter(x=>x.tag==='Weapon'&&G.L[x.id]>0).length;
@@ -2138,7 +2154,40 @@ function renderBoards(){
 const SCREENS=['menu','shop','boardScr','levelup','pause','over'];
 function showScreen(id){for(const s of SCREENS)$('#'+s).hidden=s!==id;$('#hud').hidden=!(state==='play'||state==='levelup'||state==='pause'||state==='dead');
   if(state!=='play'){input.joy=null;$('#joy').hidden=true}}
+/* ---------- save & continue an unfinished drive ---------- */
+const RUN_KEY='ld.run',RUN_V=1;
+const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh'];
+function clearRun(){try{localStorage.removeItem(RUN_KEY)}catch(e){}}
+function saveRun(){
+  if(!G||attract||G.dead||!['play','pause','levelup'].includes(state))return;
+  const c=G.car,live=a=>(a||[]).filter(o=>!o.dead);
+  const d={v:RUN_V,at:Date.now(),seed:CITY_SEED,theme:THEME.id,skin:c.skin.id,g:{},
+    car:{x:c.x,y:c.y,a:c.a,hp:c.hp,turretA:c.turretA},
+    z:live(G.z).map(z=>Object.assign({},z,{isBoss:z===G.boss,flash:0})),
+    pick:live(G.pick),mines:live(G.mines),fires:live(G.fires),puddles:live(G.puddles),acid:live(G.acid)};
+  for(const k of RUN_KEEP)d.g[k]=G[k];
+  // a choice screen that is open has already used up its pending pick; give it back so it reopens
+  d.g.pending=G.pending+(state==='levelup'&&!G.choiceChest?1:0);d.g.pendingChest=G.pendingChest+(state==='levelup'&&G.choiceChest?1:0);
+  LS.set(RUN_KEY,d);
+}
+function savedRun(){const d=LS.get(RUN_KEY,null);return d&&d.v===RUN_V&&d.g&&d.car&&Array.isArray(d.z)?d:null}
+function continueRun(){
+  const d=savedRun();if(!d){refreshMenu();return}
+  audioInit();Shop.preview=null;attract=null;
+  RESUME_CITY={seed:d.seed,theme:d.theme};newGame();
+  Object.assign(G,d.g);G.z=d.z;G.boss=G.z.find(z=>z.isBoss)||null;for(const z of G.z)delete z.isBoss;
+  G.pick=d.pick||[];G.mines=d.mines||[];G.fires=d.fires||[];G.puddles=d.puddles||[];G.acid=d.acid||[];
+  const c=G.car;c.skin=skinById(d.skin);Object.assign(c,d.car);c.vx=c.vy=0;
+  cam.x=c.x;cam.y=c.y;computeFlow(true);S=stats();c.hp=Math.min(c.hp,S.maxHp);
+  state='play';lastHud={};showScreen(null);
+  banner('Back on the road',THEME.name+' · '+fmtTime(G.t)+' survived so far');
+  $('#moveHint').hidden=!input.touch;
+}
+setInterval(saveRun,2000);
+window.addEventListener('pagehide',saveRun);
 function refreshMenu(){
+  const sr=savedRun();$('#contBtn').hidden=!sr;$('#playBtn').firstChild.textContent=sr?'New drive ':'Drive! ';
+  if(sr){const th=THEMES.find(t=>t.id===sr.theme);$('#contInfo').textContent=fmtTime(sr.g.t)+' · Lv '+sr.g.level+(th?' · '+th.name:'')}
   const d=Profile.data;$('#mBest').textContent=d.best?fmtTime(d.best):'--:--';$('#mCoins').textContent=d.coins;$('#mCoinsBadge').textContent=d.coins;$('#mSkin').textContent='Car: '+skinById(d.skin).name;
   if(document.activeElement!==$('#nick'))$('#nick').value=d.name;$('#sCoins').textContent=d.coins;
 }
@@ -2217,12 +2266,12 @@ function updateHud(){
 
 function startRun(){
   audioInit();const nm=$('#nick').value.trim().slice(0,14);if(nm&&nm!==Profile.data.name){Profile.data.name=nm;Profile.save()}
-  Shop.preview=null;KEEP_THEME=state==='menu'&&!!G;newGame();S=stats();attract=null;state='play';lastHud={};showScreen(null);
+  clearRun();Shop.preview=null;KEEP_THEME=state==='menu'&&!!G;newGame();S=stats();attract=null;state='play';lastHud={};showScreen(null);
   banner(THEME.name,'You start with an Auto Turret (Lv 1) · '+(input.touch?'tap NITRO when it is full':'Space fires nitro when full'));
   $('#moveHint').hidden=!input.touch;
 }
 async function gameOver(){
-  state='over';showScreen('over');
+  clearRun();state='over';showScreen('over');
   const run={time:G.t,kills:G.kills,level:G.level};
   const bonus=Math.floor(G.t/10);const earned=G.coins+bonus;
   const d=Profile.data;d.coins+=earned;const newBest=G.t>(d.best||0);if(newBest)d.best=Math.round(G.t*10)/10;Profile.save();
@@ -2232,8 +2281,8 @@ async function gameOver(){
   refreshMenu();
   setTimeout(()=>{const b=$('#againBtn');if(b&&state==='over')b.focus({preventScroll:true})},50);
 }
-function toMenu(){state='menu';G=null;attract=null;Shop.preview=null;showScreen('menu');refreshMenu();renderBoards()}
-function pauseGame(){if(state!=='play')return;state='pause';
+function toMenu(){saveRun();state='menu';G=null;attract=null;Shop.preview=null;showScreen('menu');refreshMenu();renderBoards()}
+function pauseGame(){if(state!=='play')return;state='pause';saveRun();
   const owned=EVOS.filter(e=>G.E[e.id]).map(e=>'★ '+e.name).concat(UPG.filter(u=>G.L[u.id]>0).map(u=>u.name+' '+G.L[u.id])).join(' · ');$('#pauseBuild').textContent=owned?'Your build: '+owned:'No upgrades yet.';showScreen('pause')}
 function resumeGame(){if(state!=='pause')return;state='play';showScreen(null)}
 
@@ -2241,7 +2290,7 @@ $('#playBtn').onclick=startRun;$('#againBtn').onclick=startRun;
 $('#shopBtn').onclick=()=>{Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#overShop').onclick=()=>{state='menu';G=null;Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
-$('#overMenu').onclick=toMenu;$('#pauseBtn').onclick=pauseGame;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
+$('#overMenu').onclick=toMenu;$('#pauseBtn').onclick=pauseGame;$('#contBtn').onclick=continueRun;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
 const muteLabel=()=>{$('#engineToggle').textContent='Engine sound: '+(engineOn?'on':'off');$('#muteToggle').textContent='Sound: '+(muted?'off':'on');$('#musicToggle').textContent='Music: '+(musicOn?'on':'off');const hm=$('#homeMusic');hm.textContent=musicOn?'♪ Music on':'♪ Music off';hm.setAttribute('aria-pressed',musicOn)};muteLabel();
 $('#muteToggle').onclick=()=>{audioInit();setMuted(!muted);muteLabel()};
 $('#engineToggle').onclick=()=>{audioInit();setEngine(!engineOn);muteLabel()};
@@ -2267,7 +2316,7 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{input.keys[e.code]=false});
 window.addEventListener('blur',()=>{input.keys={};input.joy=null;pauseGame()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){pauseGame();saveRun()}});
 $('#nitroBtn').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();audioInit();useBoost()});
 const joyEl=$('#joy'),knob=$('#joyKnob');
 cv.addEventListener('pointerdown',e=>{audioInit();if(e.pointerType==='touch'&&!input.touch)setTouch(true);if(state!=='play')return;
