@@ -1275,8 +1275,12 @@ function updateWeapons(dt){
     if(tg){const ta=Math.atan2(tg.y-c.y,tg.x-c.x);c.turretA+=angDiff(c.turretA,ta)*Math.min(1,dt*14)}
     if((cd.turret||0)<=0&&tg){
       cd.turret=Math.max(.22,.8-.11*(L.turret-1))*(G.E.storm?.6:1);const n=L.turret>=3?2:1;const dmg=9+4*L.turret;
-      for(let i=0;i<n;i++){const a=c.turretA+(n>1?(i-.5)*.12:0);const ox=Math.cos(c.turretA+Math.PI/2)*(n>1?(i-.5)*8:0),oy=Math.sin(c.turretA+Math.PI/2)*(n>1?(i-.5)*8:0);
-        G.bul.push({x:c.x+ox+Math.cos(a)*16,y:c.y+oy+Math.sin(a)*16,vx:Math.cos(a)*760+c.vx*.3,vy:Math.sin(a)*760+c.vy*.3,life:.6,dmg,pierce:L.turret>=5?3:1,hit:new Set()})}
+      // shots leave the barrel tip on the turret (its spot and height depend on the car) and drop toward the target's chest
+      const rig=carRig,mx=c.x+Math.cos(c.a)*(rig?rig.turX:0),my=c.y+Math.sin(c.a)*(rig?rig.turX:0),h0=(rig?rig.turY:24)+1,tip=19*(L.turret>=5?1.35:1);
+      for(let i=0;i<n;i++){const a=c.turretA+(n>1?(i-.5)*.12:0);const ox=Math.cos(c.turretA+Math.PI/2)*(n>1?(i-.5)*4.6:0),oy=Math.sin(c.turretA+Math.PI/2)*(n>1?(i-.5)*4.6:0);
+        const bx=mx+ox+Math.cos(a)*tip,by=my+oy+Math.sin(a)*tip,vx=Math.cos(a)*760+c.vx*.3,vy=Math.sin(a)*760+c.vy*.3;
+        const tt=Math.max(.04,Math.hypot(tg.x-bx,tg.y-by)/Math.hypot(vx,vy)),hz=clamp(tg.r*1.1,10,40);
+        G.bul.push({x:bx,y:by,h:h0,vh:(hz-h0)/tt,vx,vy,life:.6,dmg,pierce:L.turret>=5?3:1,hit:new Set()})}
       sfx('shot');
     }
   }
@@ -1333,7 +1337,8 @@ function bhSpot(c,range){
 }
 function updateProjectiles(dt){
   const c=G.car;
-  for(const b of G.bul){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+  for(const b of G.bul){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;b.h+=b.vh*dt;
+    if(b.h<=1){b.life=0;part(b.x,b.y,0,0,.15,'#ffd38a',3,'spark');continue}
     if(solidT(Math.floor(b.x/TILE),Math.floor(b.y/TILE))){b.life=0;part(b.x,b.y,0,0,.15,'#ffd38a',3,'spark');continue}
     queryZ(b.x,b.y,3,z=>{if(b.life<=0||b.hit.has(z))return;b.hit.add(z);hurt(z,b.dmg,b.vx*.08,b.vy*.08,'shot');
       if(G.E.storm&&!b.arced){b.arced=true;const t2=nearestZ(z.x,z.y,150,o=>o!==z);if(t2){hurt(t2,b.dmg*.7,0,0,'zap');G.bolts.push({pts:[[z.x,z.y],[t2.x,t2.y]],t:.12});sfx('zap')}}b.pierce--;if(b.pierce<=0)b.life=0})}
@@ -2009,7 +2014,7 @@ function render3D(now,dt){
   pEnd(P.xp);pEnd(P.coin);pEnd(P.med);pEnd(P.chest);
   pBegin(P.mine);pBegin(P.mineLed);for(const m of G.mines){pAdd(P.mine,m.x,0,m.y,0,8,4,8);pAdd(P.mineLed,m.x,5,m.y,0,2.6,2.6,2.6,col(m.arm>0||Math.sin(m.t*10)>0?'#ff3a2a':'#4a1410'))}pEnd(P.mine);pEnd(P.mineLed);
   // projectiles
-  pBegin(P.bul);for(const b of G.bul)pAdd(P.bul,b.x,20,b.y,-Math.atan2(b.vy,b.vx),16,2.4,2.4);pEnd(P.bul);
+  pBegin(P.bul);for(const b of G.bul)pAdd(P.bul,b.x,b.h,b.y,-Math.atan2(b.vy,b.vx),16,2.4,2.4,null,Math.atan2(b.vh,Math.hypot(b.vx,b.vy)));pEnd(P.bul);
   pBegin(P.rock);for(const r of G.rock)pAdd(P.rock,r.x,24,r.y,-r.a,16,4.5,4.5);pEnd(P.rock);
   pBegin(P.acid);for(const a of G.acid)pAdd(P.acid,a.x,14,a.y,0,6,6,6);pEnd(P.acid);
   pBegin(P.bolt);for(const b of G.bolts){let px=b.pts[0][0],py=b.pts[0][1];
