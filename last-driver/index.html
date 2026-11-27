@@ -864,19 +864,35 @@ function riverPush(o,r){ // exact banks: the tile grid is too coarse for the cur
   else{const d=n.d||1;const ux=(o.x-n.x)/d,uy=(o.y-n.y)/d;o.x+=ux*outD;o.y+=uy*outD;o.nx=ux;o.ny=uy}
   return true}
 
-/* ---------- collapsed elevated highway over part of a main road, on concrete pillars ---------- */
+/* ---------- elevated highway over part of a main road: an on-ramp at one end, a broken edge to fly off at the other ---------- */
+const OP_HW=46,OP_CLEAR=34; // deck half-width; below this height the ramp is a solid wall, above it you drive under
 function makeOverpass(){
   if(!THEME.overpass)return;
   const cands=roads.slice(1).filter(pl=>pl.length>=30&&Math.hypot(pl[0][0]-pl[pl.length-1][0],pl[0][1]-pl[pl.length-1][1])>WORLD*.5);if(!cands.length)return;
   const pl=pick(cands),n=pl.length,i0=Math.floor(n*rand(.12,.28)),i1=Math.min(n-2,i0+Math.floor(n*rand(.42,.55)));
-  overpass={pts:pl.slice(i0,i1+1).map(p=>[p[0],p[1]]),H:84};
-  let acc=140;const P=overpass.pts;
-  for(let i=1;i<P.length-1;i++){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(acc<260)continue;
+  let raw=pl.slice(i0,i1+1).map(p=>[p[0],p[1]]);if(Math.random()<.5)raw.reverse();
+  // resample every ~20 units so the ramp curve is smooth
+  const P=[raw[0]];for(let i=1;i<raw.length;i++){const a=raw[i-1],b=raw[i],l=Math.hypot(b[0]-a[0],b[1]-a[1]),k=Math.max(1,Math.round(l/20));for(let j=1;j<=k;j++)P.push([a[0]+(b[0]-a[0])*j/k,a[1]+(b[1]-a[1])*j/k])}
+  overpass={pts:P,H:84};const S=[0];for(let i=1;i<P.length;i++)S.push(S[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));
+  overpass.S=S;overpass.L=S[S.length-1];overpass.RL=Math.min(420,overpass.L*.35);
+  let s0=0;while(opH(s0)<6)s0+=1;overpass.sIn=s0;let s1=s0;while(opH(s1)<OP_CLEAR)s1+=1;overpass.sClear=s1;
+  let acc=140;
+  for(let i=1;i<P.length-1;i++){acc+=S[i]-S[i-1];if(acc<260||S[i]<overpass.RL*.7)continue;
     const [x,y]=P[i];if(river&&nearestOn(river,x,y).d<riverHW+70)continue;
     let cross=false;for(const q of roads){if(q===pl)continue;if(nearestOn(q,x,y).d<ROAD_HW+60){cross=true;break}}if(cross)continue;
-    pillars.push({x,y,r:12});acc=0}
+    pillars.push({x,y,r:12,h:opH(S[i])});acc=0}
+  // two wrecks stranded on the deck
+  overpass.wrecks=[];for(let k=0;k<2;k++){const s=lerp(overpass.RL+120,overpass.L-160,.25+k*.5);const q=opAt(s);const side=k?1:-1;
+    overpass.wrecks.push({x:q.x-q.uy*side*22,y:q.y+q.ux*side*22,a:Math.atan2(q.uy,q.ux)+rand(-.5,.5)})}
 }
-function pillarPush(o,r){let hit=false;for(const p of pillars){const dx=o.x-p.x,dy=o.y-p.y,rr=p.r+r;const d2=dx*dx+dy*dy;if(d2>=rr*rr)continue;
+function opH(s){const o=overpass;if(s<=0)return 0;if(s>=o.RL)return o.H;const t=s/o.RL;return o.H*t*t*(3-2*t)}
+function opAt(s){const o=overpass,P=o.pts,S=o.S;let i=0;while(i<P.length-2&&S[i+1]<s)i++;const l=S[i+1]-S[i]||1,t=clamp((s-S[i])/l,0,1);const ux=(P[i+1][0]-P[i][0])/l,uy=(P[i+1][1]-P[i][1])/l;return{x:P[i][0]+(P[i+1][0]-P[i][0])*t,y:P[i][1]+(P[i+1][1]-P[i][1])*t,ux,uy}}
+// where a point sits relative to the deck: s along it (negative before the start, past L after the end), d sideways
+function opProj(x,y){const o=overpass,P=o.pts,n=nearestOn(P,x,y);const a=P[n.i],b=P[n.i+1];const l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,ux=(b[0]-a[0])/l,uy=(b[1]-a[1])/l;
+  const rx=x-a[0],ry=y-a[1],along=rx*ux+ry*uy,lat=-rx*uy+ry*ux;
+  return{s:o.S[n.i]+(n.end?along:clamp(along,0,l)),d:n.end?Math.abs(lat):n.d,lat,ux,uy}}
+const opNear=(x,y)=>{if(!overpass)return false;const b=overpass.bb||(overpass.bb=(()=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of overpass.pts){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])}return{x0:x0-80,y0:y0-80,x1:x1+80,y1:y1+80}})());return x>b.x0&&x<b.x1&&y>b.y0&&y<b.y1};
+function pillarPush(o,r){if(o.deck)return false;let hit=false;for(const p of pillars){const dx=o.x-p.x,dy=o.y-p.y,rr=p.r+r;const d2=dx*dx+dy*dy;if(d2>=rr*rr)continue;
   const d=Math.sqrt(d2)||1;o.x=p.x+dx/d*rr;o.y=p.y+dy/d*rr;o.nx=dx/d;o.ny=dy/d;hit=true}return hit}
 
 /* ---------- hills: smooth grassy mounds inside parks ---------- */
@@ -1141,6 +1157,7 @@ function addNum(x,y,h,v,kind){if(G.nums.length>60)G.nums.shift();G.nums.push({x:
 function updateJump(c,dt){
   const gh=groundH(c.x,c.y);
   if(c.air){c.vz-=950*dt;c.ha+=c.vz*dt;c.airT+=dt;c.z=c.ha-gh;if(c.ha<=gh){c.ha=gh;c.z=0;c.air=false;c.vz=0;c.gvz=0;landJump(c)}return}
+  if(overpass&&opNear(c.x,c.y)&&opStep(c,dt,true))return;else if(c.deck)c.deck=false;
   // on the ground: follow it; over a crest, leave it when it falls away faster than gravity
   let gvz=(gh-(c.ha||0))/Math.max(dt,1e-3);if(Math.abs(gvz)>700)gvz=0; // teleports (start, revive, continue)
   if(c.gvz>60&&gvz<c.gvz-950*dt*1.3&&Math.hypot(c.vx,c.vy)>150){c.air=true;c.vz=c.gvz;c.airT=0;c.ha+=c.vz*dt;c.z=c.ha-gh;c.rampH=0;return}
@@ -1160,6 +1177,29 @@ function updateJump(c,dt){
     if(u>RAMP.len/2-14&&along>150){c.air=true;c.ha=gh+RAMP.h;c.z=RAMP.h;c.vz=clamp(along*1.0,240,520);c.airT=0;c.rampH=0;sfx('nitro');shake(2)}
     break}
 }
+/* the overpass: drive up the on-ramp, along the deck, and off the broken end. Shared by the car and zombies. */
+function opBounce(o,nx,ny,pen,isCar){o.x+=nx*pen;o.y+=ny*pen;if(!isCar)return;const vn=o.vx*nx+o.vy*ny;if(vn<0){o.vx-=vn*nx*1.4;o.vy-=vn*ny*1.4;o.vx*=.85;o.vy*=.85;if(vn<-140){sfx('crash');shake(3)}}}
+function opStep(o,dt,isCar){
+  const P=overpass,q=opProj(o.x,o.y),r=isCar?o.r*.6:o.r*.8;
+  const sideN=()=>{const sg=q.lat>=0?1:-1;return[-q.uy*sg,q.ux*sg]}; // unit vector pointing away from the centre line
+  if(o.deck){
+    if(q.s<=0){o.deck=false;o.zh=0;return false} // rolled off the bottom of the ramp
+    if(q.s>=P.L){ // off the broken end
+      o.deck=false;o.zh=0;if(!isCar)return false;
+      o.air=true;o.vz=Math.max(80,o.gvz||0);o.airT=0;o.ha=P.H;o.z=o.ha-groundH(o.x,o.y);o.rampH=0;sfx('nitro');shake(2);return true}
+    if(q.d>OP_HW-r){const [nx,ny]=sideN();opBounce(o,-nx,-ny,q.d-(OP_HW-r),isCar)} // barriers
+    for(const w of P.wrecks){for(const k of [-12,12]){const wx=w.x+Math.cos(w.a)*k,wy=w.y+Math.sin(w.a)*k,dx=o.x-wx,dy=o.y-wy,dd=Math.hypot(dx,dy)||1,rr=13+r;if(dd<rr)opBounce(o,dx/dd,dy/dd,rr-dd,isCar)}}
+    const h=opH(q.s),gh=groundH(o.x,o.y);
+    if(isCar){let gvz=(h-(o.ha||0))/Math.max(dt,1e-3);if(Math.abs(gvz)>700)gvz=0;o.gvz=gvz;o.ha=h;o.z=h-gh;o.rampH=0}else o.zh=h-gh;
+    return true}
+  if(isCar&&o.air)return false;
+  if(q.s<-r||q.s>P.L+r||q.d>OP_HW+r)return false;
+  if(q.s<P.sIn){if(q.d<OP_HW&&(isCar||G.car.deck)){o.deck=true;return opStep(o,dt,isCar)}return false} // the low end: drive on
+  if(q.s>=P.sClear)return false; // high enough to pass underneath
+  // the ramp's solid sides and back: push out sideways or back under the deck, whichever is closer
+  const pl=OP_HW+r-q.d,pb=P.sClear-q.s;
+  if(pl<=pb){const [nx,ny]=sideN();opBounce(o,nx,ny,pl,isCar)}else opBounce(o,q.ux,q.uy,pb,isCar);
+  return false}
 function landJump(c){
   const t=c.airT;c.airT=0;sfx('crash');
   if(t<.3){shake(2);return}
@@ -1274,6 +1314,12 @@ function updateSpawns(dt){
   const rate=Math.min(10,.9+t*.024);
   G.spawnAcc+=rate*dt;
   while(G.spawnAcc>=1){G.spawnAcc-=1;if(alive<cap)spawnZombie(pickType())}
+  // the deck is no hiding place: zombies climb over the barriers ahead of and behind the car
+  if(overpass&&G.car.deck){G.deckSp=(G.deckSp||0)-dt;if(G.deckSp<=0){G.deckSp=rand(.5,.9);const P=overpass;
+    let n=0;for(const z of G.z)if(z.deck&&!z.dead)n++;
+    if(n<12){const cs=opProj(G.car.x,G.car.y).s,s=clamp(cs+(Math.random()<.65?1:-1)*rand(220,420),P.sClear+20,P.L-30);
+      if(Math.abs(s-cs)>150){const q=opAt(s),sd=Math.random()<.5?-1:1,o=OP_HW-14;const t=Math.random()<.25?'runner':'walker';
+        const z=ZT[t]&&spawnZombie(t,{x:q.x-q.uy*sd*o,y:q.y+q.ux*sd*o});if(z){z.deck=true;z.zh=opH(s)-groundH(z.x,z.y)}}}}}
   if(t>=G.nextHorde){G.nextHorde+=60;const n=Math.floor(16+t/7);const c=G.car;
     const a0=Math.random()*Math.PI*2;
     for(let i=0;i<n;i++){const a=a0+(i/n)*Math.PI*1.2;const vr=viewEdge(a)+60;const p={x:c.x+Math.cos(a)*vr,y:c.y+Math.sin(a)*vr};const tx=Math.floor(p.x/TILE),ty=Math.floor(p.y/TILE);
@@ -1311,7 +1357,7 @@ function killZ(z){
     if(G.recent.length>=7){slowMo(.55);G.recent.length=0}}
   const kind=z.type==='boss'?'fly':deathKind(z);
   if(kind==='fly'&&G.corpses.length<40){const sp=Math.hypot(z.kx,z.ky);const a=sp>5?Math.atan2(z.ky,z.kx):Math.random()*6.28;const v=Math.max(60,Math.min(420,sp*1.3));
-    G.corpses.push({x:z.x,y:z.y,h:0,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vh:z.type==='boss'?180:rand(120,140)+v*.6,spin:0,vs:rand(6,12)*(Math.random()<.5?-1:1),a:z.a,r:z.r,col:z.col,head:z.head,type:z.type,t:1.4,bounced:false})
+    G.corpses.push({x:z.x,y:z.y,h:z.zh||0,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vh:z.type==='boss'?180:rand(120,140)+v*.6,spin:0,vs:rand(6,12)*(Math.random()<.5?-1:1),a:z.a,r:z.r,col:z.col,head:z.head,type:z.type,t:1.4,bounced:false})
     for(let i=0;i<5;i++)part(z.x,z.y,Math.cos(a)*v*rand(.3,.9)+rand(-60,60),Math.sin(a)*v*rand(.3,.9)+rand(-60,60),rand(.6,1.1),pick(['#7a1520','#5a0f18','#9a2a2a',z.col]),rand(2.5,4.5),'dot',z.r,rand(120,280))}
   else if(kind==='gib')spawnGibs(z);
   else if(kind==='pop')popBloater(z);
@@ -1458,7 +1504,7 @@ function update(dt){
     if(Math.abs(d)>1.3)want*=.55}
   const prev=fwd;
   if(fwd<want)fwd=Math.min(want,fwd+S.accel*dt);else fwd=Math.max(want,fwd-(mag>0?520:380)*dt);
-  if(!air){const sl=(groundH(c.x+fx*12,c.y+fy*12)-groundH(c.x-fx*12,c.y-fy*12))/24;fwd-=sl*560*dt;c.slope=sl}else c.slope=0; // hills: slower uphill, faster downhill
+  if(!air){const hf=c.deck?(x,y)=>opH(opProj(x,y).s):groundH;const sl=(hf(c.x+fx*12,c.y+fy*12)-hf(c.x-fx*12,c.y-fy*12))/24;fwd-=sl*560*dt;c.slope=sl}else c.slope=0; // hills: slower uphill, faster downhill
   fwd=Math.max(0,Math.min(fwd,S.maxSpeed));
   const grip=air?0:targetA!==null?5.2:9;
   lat*=Math.exp(-grip*dt);
@@ -1505,7 +1551,8 @@ function updateZombies(dt){
     // relocate stragglers
     if(z.type!=='boss'&&d>vr*2.1){const p=findSpawn(40,220);if(p){z.x=p.x;z.y=p.y;z.kx=z.ky=0}continue}
     let tx=c.x,ty=c.y;
-    if(d>TILE*2.2){const f=flowDir(z.x,z.y);if(f){tx=f.x;ty=f.y}}
+    if(z.deck&&!c.deck){tx=overpass.pts[0][0];ty=overpass.pts[0][1]} // stranded up top: walk back down the ramp
+    else if(d>TILE*2.2&&!(z.deck&&c.deck)){const f=flowDir(z.x,z.y);if(f){tx=f.x;ty=f.y}}
     let mx=tx-z.x,my=ty-z.y;const ml=Math.hypot(mx,my)||1;mx/=ml;my/=ml;
     let sp=z.speed;
     if(G.dead){mx=-mx*.2;my=-my*.2}
@@ -1522,12 +1569,13 @@ function updateZombies(dt){
     if(sp!==0||Math.abs(z.kx)>1)z.a=Math.atan2(my,mx);
     if(z.type==='boss'&&z.st==='dash')z.a=z.da;
     resolveSolid(z,z.r*.85);
+    if(overpass&&z.type!=='boss'&&opNear(z.x,z.y))opStep(z,dt,false);else if(z.deck){z.deck=false;z.zh=0}
     // separation
     const ci=clamp(Math.floor(z.y/HC),0,HN-1)*HN+clamp(Math.floor(z.x/HC),0,HN-1);const cell=hash[ci];
     for(let i=0;i<cell.length;i++){const o=cell[i];if(o===z||o.dead)continue;const ox=z.x-o.x,oy=z.y-o.y;const rr=z.r+o.r;const d2=ox*ox+oy*oy;
       if(d2<rr*rr&&d2>.01){const dd=Math.sqrt(d2);const p=(rr-dd)*.5;const wz=z.type==='boss'?.1:.5;z.x+=ox/dd*p*wz;z.y+=oy/dd*p*wz}}
     // car contact (none while the car is flying over them)
-    if(G.dead||c.z>9)continue;
+    if(G.dead||!!z.deck!==!!c.deck||c.z-(z.zh||0)>9)continue;
     const rr=z.r+c.r;
     if(d<rr){
       const nx=-dx/d,ny=-dy/d; // from car to zombie
@@ -2001,6 +2049,10 @@ function ribbonGeo(pl,nrm,o1,y1,o2,y2,uvScale){const pos=[],uv=[],idx=[];let L=0
   pl.forEach((p,i)=>{if(i)L+=Math.hypot(p[0]-pl[i-1][0],p[1]-pl[i-1][1]);const n=nrm[i];pos.push(p[0]+n[0]*o1,y1,p[1]+n[1]*o1,p[0]+n[0]*o2,y2,p[1]+n[1]*o2);const k=uvScale||128;uv.push(L/k,0,L/k,Math.hypot(o2-o1,y2-y1)/k)});
   for(let i=0;i<pl.length-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2)}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();return geo}
+function ribbonGeoH(pl,nrm,o1,y1,o2,y2,uvScale){const pos=[],uv=[],idx=[];let L=0;const k=uvScale||128; // y1,y2: arrays (one height per point)
+  pl.forEach((p,i)=>{if(i)L+=Math.hypot(p[0]-pl[i-1][0],p[1]-pl[i-1][1]);const n=nrm[i];pos.push(p[0]+n[0]*o1,y1[i],p[1]+n[1]*o1,p[0]+n[0]*o2,y2[i],p[1]+n[1]*o2);uv.push(L/k,0,L/k,Math.hypot(o2-o1,y2[i]-y1[i])/k)});
+  for(let i=0;i<pl.length-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2)}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();return geo}
 function samplePl(pl,step,cb){for(let i=0;i<pl.length-1;i++){const ax=pl[i][0],ay=pl[i][1],dx=pl[i+1][0]-ax,dy=pl[i+1][1]-ay,l=Math.hypot(dx,dy);if(!l)continue;const ux=dx/l,uy=dy/l;
   for(let t=(i?0:step/2);t<l;t+=step)cb(ax+ux*t,ay+uy*t,ux,uy)}}
 function instBoxes(list,w,h,d,mat,cast){if(!list.length)return null;const im=new THREE.InstancedMesh(new THREE.BoxGeometry(w,h,d),mat,list.length);
@@ -2051,27 +2103,33 @@ function buildRiver3D(add){
 function segX(a,b,c,d){const r1x=b[0]-a[0],r1y=b[1]-a[1],r2x=d[0]-c[0],r2y=d[1]-c[1];const den=r1x*r2y-r1y*r2x;if(Math.abs(den)<1e-9)return null;
   const t=((c[0]-a[0])*r2y-(c[1]-a[1])*r2x)/den,u=((c[0]-a[0])*r1y-(c[1]-a[1])*r1x)/den;if(t<0||t>1||u<0||u>1)return null;return[a[0]+r1x*t,a[1]+r1y*t]}
 function buildOverpass3D(add){
-  overpassMats=[];overpassFade=1;if(!overpass)return;const P=overpass.pts,H=overpass.H,nrm=plNormals(P),HW=46,TH=10;
-  const top=lam('#5d626c',{side:THREE.DoubleSide}),under=lam('#4a4f58',{side:THREE.DoubleSide}),barrier=lam('#a7a59d',{side:THREE.DoubleSide}),pil=lam('#8a8f99');
+  overpassMats=[];overpassFade=1;if(!overpass)return;const O=overpass,P=O.pts,nrm=plNormals(P),HW=OP_HW,TH=10;
+  const top=TEX.deck?lam('#e8e8e8',{side:THREE.DoubleSide,map:TEX.deck}):lam('#5d626c',{side:THREE.DoubleSide}),under=lam('#4a4f58',{side:THREE.DoubleSide}),barrier=lam('#a7a59d',{side:THREE.DoubleSide}),pil=lam('#8a8f99');
   overpassMats.push(top,under,barrier);
-  const parts=[ribbonGeo(P,nrm,-HW,H,HW,H),ribbonGeo(P,nrm,-HW,H-TH,HW,H-TH)];
-  const meshes=[];const m1=add(new THREE.Mesh(parts[0],top));const m2=add(new THREE.Mesh(parts[1],under));meshes.push(m1,m2);
-  for(const sd of [-1,1]){meshes.push(add(new THREE.Mesh(ribbonGeo(P,nrm,sd*HW,H+9,sd*HW,H-TH),barrier)))}
+  const hTop=O.S.map(s=>opH(s)+.8),hBot=O.S.map(s=>Math.max(.2,opH(s)-TH)),hRail=O.S.map(s=>opH(s)+9);
+  const meshes=[add(new THREE.Mesh(ribbonGeoH(P,nrm,-HW,hTop,HW,hTop,96),top)),add(new THREE.Mesh(ribbonGeoH(P,nrm,-HW,hBot,HW,hBot),under))];
+  for(const sd of [-1,1])meshes.push(add(new THREE.Mesh(ribbonGeoH(P,nrm,sd*HW,hRail,sd*HW,hBot),barrier)));
   for(const m of meshes){m.castShadow=true;m.receiveShadow=true}
-  // dashed lane line on the deck
-  const dashes=[];samplePl(P,46,(x,y,ux,uy)=>dashes.push([x,H+.4,y,-Math.atan2(uy,ux)]));const dm=basic('#c9a24a',{transparent:true});overpassMats.push(dm);const ds=instBoxes(dashes,22,.4,3,dm,false);if(ds)add(ds);
+  // dashed lane line and yellow edge lines that follow the slope
+  const dashes=[];samplePl(P,46,(x,y,ux,uy)=>{const h=opH(opProj(x,y).s);dashes.push([x,h+1.2,y,-Math.atan2(uy,ux)])});
+  if(!TEX.deck){const dm=basic('#c9a24a',{transparent:true});overpassMats.push(dm);const ds=instBoxes(dashes,22,.4,3,dm,false);if(ds){ds.receiveShadow=false;add(ds)}}
+  // chevrons on the on-ramp so it reads as "drive up here"
+  const cv=basic('#ffd34a',{transparent:true});overpassMats.push(cv);
+  for(let s=14;s<O.RL*.6;s+=34){const q=opAt(s),h=opH(s)+1.3;for(const sd of [-1,1]){const m=add(new THREE.Mesh(new THREE.BoxGeometry(4,.5,26),cv));
+    m.position.set(q.x-q.uy*sd*10,h,q.y+q.ux*sd*10);m.rotation.order='YXZ';m.rotation.y=-Math.atan2(q.uy,q.ux)-sd*.7;m.rotation.x=0}}
   // pillars with a cap under the deck
-  for(const p of pillars){const c=add(new THREE.Mesh(new THREE.CylinderGeometry(p.r,p.r+2,H-TH,12),pil));c.position.set(p.x,(H-TH)/2,p.y);c.castShadow=true;c.receiveShadow=true;ink(c,1);
+  for(const p of pillars){const H=p.h||O.H;const c=add(new THREE.Mesh(new THREE.CylinderGeometry(p.r,p.r+2,H-TH,12),pil));c.position.set(p.x,(H-TH)/2,p.y);c.castShadow=true;c.receiveShadow=true;ink(c,1);
     const n=nearestOn(P,p.x,p.y),a=P[Math.min(P.length-1,n.i+1)],b=P[n.i];const cap=add(new THREE.Mesh(new THREE.BoxGeometry(28,8,HW*2-8),pil));cap.position.set(p.x,H-TH-4,p.y);cap.rotation.y=-Math.atan2(a[1]-b[1],a[0]-b[0]);ink(cap,1)}
-  // broken ends: a slab hanging down and rebar sticking out
-  for(const end of [0,1]){const i=end?P.length-1:0,j=end?P.length-2:1;const ux=(P[i][0]-P[j][0]),uy=(P[i][1]-P[j][1]),l=Math.hypot(ux,uy)||1;const dx=ux/l,dy=uy/l;
+  // the broken end: a slab hanging down, rebar sticking out, and warning stripes on the lip
+  {const i=P.length-1,j=P.length-2,H=O.H;const ux=(P[i][0]-P[j][0]),uy=(P[i][1]-P[j][1]),l=Math.hypot(ux,uy)||1;const dx=ux/l,dy=uy/l;
     const g=new THREE.Group();g.position.set(P[i][0],H-TH/2,P[i][1]);g.rotation.y=-Math.atan2(dy,dx);
     const slab=new THREE.Mesh(new THREE.BoxGeometry(44,TH,HW*1.4),top);slab.position.set(20,0,-8);const hinge=new THREE.Group();hinge.rotation.z=-.62;hinge.add(slab);g.add(hinge);slab.castShadow=true;ink(slab,1);
     for(let k=0;k<7;k++){const r=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,rand(12,26),5),lam('#5a3a2a'));r.rotation.z=Math.PI/2+rand(-.5,.5);r.position.set(rand(4,12),rand(-3,3),rand(-HW+6,HW-6));g.add(r)}
+    for(let k=-3;k<=3;k++){const st=new THREE.Mesh(new THREE.BoxGeometry(6,.6,9),basic(k%2?'#16181c':'#ffd34a'));st.position.set(-6,TH/2+1.3,k*12);g.add(st)}
     add(g)}
-  // a couple of wrecks stranded up top
-  for(let k=0;k<2;k++){const i=Math.floor(P.length*(.3+k*.35)),q=P[i],q2=P[Math.min(P.length-1,i+1)];const g=new THREE.Group();const b=new THREE.Mesh(new THREE.BoxGeometry(44,10,22),lam(pick(['#5a3a32','#3a4450','#4d4a3a'])));b.position.y=6;const t=new THREE.Mesh(new THREE.BoxGeometry(21,7,19),lam('#22344a'));t.position.set(-2,14.5,0);g.add(b,t);
-    g.position.set(q[0]+nrm[i][0]*rand(-20,20),H,q[1]+nrm[i][1]*rand(-20,20));g.rotation.y=-Math.atan2(q2[1]-q[1],q2[0]-q[0])+rand(-.6,.6);g.traverse(o=>{if(o.isMesh){o.castShadow=true;overpassMats.push(o.material)}});add(g)}
+  // wrecks stranded up top (they block the deck)
+  for(const w of O.wrecks){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.BoxGeometry(44,10,22),lam(pick(['#5a3a32','#3a4450','#4d4a3a'])));b.position.y=6;const t=new THREE.Mesh(new THREE.BoxGeometry(21,7,19),lam('#22344a'));t.position.set(-2,14.5,0);g.add(b,t);
+    g.position.set(w.x,opH(opProj(w.x,w.y).s)+.8,w.y);g.rotation.y=-w.a;g.traverse(o=>{if(o.isMesh){o.castShadow=true;overpassMats.push(o.material)}});add(g)}
 }
 function build3DCity(){
   if(!renderer)return;
@@ -2346,8 +2404,8 @@ function render3D(now,dt){
   moon.position.set(tx+380,900,ty-520);moon.target.position.set(tx,0,ty);moon.target.updateMatrixWorld();
   const cp0=camera.position;
   if(waterTex)waterTex.offset.x=(now*.00003)%1;
-  if(overpass&&overpassMats.length){let hide=false;const P=overpass.pts;
-    for(let i=0;i<=8&&!hide;i++){const t=i/8*.5;const sx=lerp(c.x,cp0.x,t),sy=lerp(c.y,cp0.z,t),sh=lerp(10,cp0.y,t);if(sh<overpass.H+10&&nearestOn(P,sx,sy).d<56)hide=true}
+  if(overpass&&overpassMats.length){let hide=false;const ch=(c.ha||0)+10;
+    if(!c.deck)for(let i=0;i<=8&&!hide;i++){const t=i/8*.5;const sx=lerp(c.x,cp0.x,t),sy=lerp(c.y,cp0.z,t),sh=lerp(ch,cp0.y,t);if(!opNear(sx,sy))continue;const q=opProj(sx,sy);if(q.s>0&&q.s<overpass.L&&q.d<56&&sh<opH(q.s)+10&&opH(q.s)>ch)hide=true}
     const want=hide?.2:1;if(Math.abs(overpassFade-want)>.01){overpassFade=lerp(overpassFade,want,Math.min(1,dt*8));const tr=overpassFade<.98;for(const m of overpassMats){m.transparent=tr;m.opacity=overpassFade;m.depthWrite=!tr}}}
   // fade buildings that hide the car
   const cp=camera.position;for(const b of buildings)b.want=1;
@@ -2387,7 +2445,7 @@ function render3D(now,dt){
   const WHITE=col('#ffffff'),EYE=col('#d9ff8a'),EYEB=col('#ff3a2a');
   let boss=null;
   for(const z of G.z){if(z.dead)continue;if(z.type==='boss')boss=z;
-    const r=z.r,a=z.a,ca=Math.cos(a),sa=Math.sin(a),yaw=-a;const fl=z.flash>0;const bob=Math.abs(Math.sin(z.wob))*1.6;const sw=Math.sin(z.wob)*.3;
+    const r=z.r,a=z.a,ca=Math.cos(a),sa=Math.sin(a),yaw=-a;const fl=z.flash>0;const bob=Math.abs(Math.sin(z.wob))*1.6+(z.zh||0);const sw=Math.sin(z.wob)*.3;
     const bc=fl?WHITE:col(z.col),hc=fl?WHITE:col(z.head);
     let headY,hx=z.x+ca*r*.2,hy=z.y+sa*r*.2,hr=r*.45,bodyH;
     if(z.type==='bloater'){const p=1+Math.sin(now/150+z.wob)*.06;pAdd(P.zBlob,z.x,r*.95+bob,z.y,yaw,r*p,r*.95*p,r*p,bc);headY=r*1.9+bob;hr=r*.36;bodyH=r*1.6;
@@ -2401,7 +2459,7 @@ function render3D(now,dt){
         pAdd(P.zArm,wx,bodyH*.84+bob,wy,yaw+sd*sw*.35,len,r*.3,r*.3,fl?WHITE:(z.type==='boss'&&z.boss==='butcher'&&sd>0?col('#c4c9d2'):hc),-.12-(z.type==='runner'?.25:0))}}
     pAdd(P.zHead,hx,headY,hy,yaw,hr,hr,hr,hc);
     if(inRun&&z.hp<z.maxHp&&z.hp>0){const f=clamp(z.hp/z.maxHp,0,1);const bw=z.type==='boss'?96:clamp(r*2.3,24,56),bh=z.type==='boss'?7:4.5;const by=headY+hr+(z.type==='boss'?16:9);
-      const zg=groundH(z.x,z.y);pAddQ(P.hpBg,z.x,by+zg,z.y,bw+3,bh+3,camera.quaternion);
+      const zg=groundH(z.x,z.y)-(z.zh||0)*0;pAddQ(P.hpBg,z.x,by+zg,z.y,bw+3,bh+3,camera.quaternion);
       pAddQ(P.hpFill,z.x-_right.x*bw/2,by-_right.y*bw/2+zg,z.y-_right.z*bw/2,bw*f,bh,camera.quaternion,f>.6?HPG:f>.3?HPY:HPR)}
     const ec=z.type==='boss'?EYEB:EYE;for(const sd of [-1,1]){const ex=hx+ca*hr*.82-sa*sd*hr*.38,ey=hy+sa*hr*.82+ca*sd*hr*.38;pAdd(P.zEye,ex,headY+hr*.15,ey,0,hr*.17,hr*.17,hr*.17,ec)}
   }
