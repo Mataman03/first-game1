@@ -339,6 +339,18 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .qlist.dark .qt{color:var(--paper)}.qlist.dark .qr{color:var(--coin)}.qlist.dark .qb{background:var(--plate-2);border-color:#000}.qlist.dark .qp{color:var(--muted)}
 .qlist.dark .q.done .qt,.qlist.dark .q.done .qp{color:#8fd18f}
 .qlist.dark:empty{display:none}
+
+/* second chance + ad */
+.revbar,.adbar{height:8px;border:2px solid var(--ink);border-radius:5px;background:var(--plate-2);overflow:hidden}
+.revbar i,.adbar i{display:block;height:100%;width:100%;background:var(--sodium)}
+.adbar i{width:0;background:var(--xp)}
+.adbox{position:relative;background:#0a0c12;border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.adtag{position:absolute;top:10px;left:10px;font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;background:var(--paper);color:var(--ink);border-radius:4px;padding:2px 7px}
+.adcard{aspect-ratio:16/9;border-radius:8px;border:2px dashed #3a4050;background:repeating-linear-gradient(-45deg,#141822 0 18px,#181d29 18px 36px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px}
+.adcard b{font:400 30px var(--display);color:var(--sodium)}
+.adcard span{font-size:13px;color:var(--muted)}
+.adfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.adcount{font:400 22px var(--display);color:var(--paper);font-variant-numeric:tabular-nums}
 /* touch layout: smaller gauges */
 .touch .hud-bottom{left:max(16px,env(safe-area-inset-left,0px));transform:none;width:calc(100% - 160px)}
 .touch .speedo{width:58px;height:58px}
@@ -478,6 +490,36 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
         <button class="btn" id="engineToggle">Engine sound: on</button>
         <button class="btn" id="quitBtn">Save &amp; quit to menu</button>
       </div>
+    </div>
+  </section>
+
+  <!-- SECOND CHANCE -->
+  <section class="screen" id="revive" hidden>
+    <div class="panel" style="width:min(440px,100%)">
+      <div class="over-title"><span class="sign">Car wrecked</span><h2 style="color:var(--sodium)">Second chance?</h2></div>
+      <div class="plate" style="display:flex;flex-direction:column;gap:14px;align-items:stretch">
+        <p class="hint" style="text-align:center;font-size:15px;color:var(--paper)">Watch a short ad and get back on the road with <b style="color:var(--hp)">25% health</b>. One revive per drive.</p>
+        <button class="btn go" id="revWatch">&#9654; Watch ad &middot; Revive</button>
+        <div class="revbar"><i id="revBar"></i></div>
+        <button class="btn" id="revNo">No thanks</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- AD (placeholder until an ad network is connected) -->
+  <section class="screen" id="adScr" hidden>
+    <div class="panel" style="width:min(520px,100%)">
+      <div class="adbox">
+        <span class="adtag">Ad</span>
+        <div class="adcard">
+          <b>Your ad here</b>
+          <span>This is a placeholder for a rewarded video ad.</span>
+        </div>
+        <div class="adbar"><i id="adBar"></i></div>
+        <div class="adfoot"><span id="adNote"></span><span class="adcount" id="adCount">5</span></div>
+      </div>
+      <button class="btn go" id="adClaim" hidden>Claim reward &middot; Revive</button>
+      <button class="btn" id="adSkip">Skip ad (no revive)</button>
     </div>
   </section>
 
@@ -1190,7 +1232,7 @@ function dropPick(kind,x,y,v,spray){
   G.pick.push({kind,x,y,v,vx:Math.cos(a)*s,vy:Math.sin(a)*s,mag:false,t:0});
 }
 function hurtCar(d){
-  const c=G.car;if(G.dead)return;d*=1-S.armor;c.hp-=d;G.dmgFlash=Math.min(.6,G.dmgFlash+.25);shake(3);sfx('hurt');
+  const c=G.car;if(G.dead||G.invuln>0)return;d*=1-S.armor;c.hp-=d;G.dmgFlash=Math.min(.6,G.dmgFlash+.25);shake(3);sfx('hurt');
   if(c.hp<=0){c.hp=0;carDie()}
 }
 function carDie(){sfx('die');clearRun();
@@ -1207,6 +1249,7 @@ function update(dt){
   if(G.hitstop>0){G.hitstop-=dt;return}
   if(G.slow>0){G.slow-=dt;dt*=.33}
   if(G.slowCd>0)G.slowCd-=dt;
+  if(G.invuln>0)G.invuln-=dt;
   S=stats();
   const c=G.car;
   if(!G.dead){G.t+=dt;if((G.t%1)<dt)questMax('survive',G.t)}
@@ -1265,7 +1308,7 @@ function update(dt){
   G.z=G.z.filter(z=>!z.dead);
   if(G.dmgFlash>0)G.dmgFlash=Math.max(0,G.dmgFlash-dt*1.5);
   if(G.banner){G.banner.t-=dt;if(G.banner.t<=0)G.banner=null}
-  if(G.dead){G.deadT+=dt;if(G.deadT>1.6&&state==='dead')gameOver()}
+  if(G.dead){G.deadT+=dt;if(G.deadT>1.6&&state==='dead'){if(!G.revived)offerRevive();else gameOver()}}
   // pending level-ups
   if(state==='play'&&(G.pending>0||G.pendingChest>0))openChoice();
 }
@@ -2028,7 +2071,7 @@ function render3D(now,dt){
     for(const m of b.mats){m.transparent=tr;m.opacity=b.fade;m.depthWrite=!tr}b.mesh.castShadow=!tr;b.ink.visible=!tr;b.lipInk.visible=!tr;if(b.tierInk)b.tierInk.visible=!tr}
   // car
   const g=carRig.g;const deadNow=G.dead&&G.deadT>.05;
-  g.visible=!deadNow;wreckObj.visible=deadNow&&inRun;
+  g.visible=!deadNow&&!(G.invuln>0&&Math.floor(now/90)%2);wreckObj.visible=deadNow&&inRun;
   g.position.set(c.x,(c.z||0)+(c.rampH||0),c.y);g.rotation.y=-c.a;
   carRig.tilt.rotation.x=clamp((c.lat||0)*.0007,-.07,.07);
   carRig.tilt.rotation.z=c.z>0?clamp(c.vz*.0007,-.28,.28):c.rampH>0?Math.atan2(RAMP.h,RAMP.len):clamp(-(c.throttle||0)*.02,-.03,.03);
@@ -2244,7 +2287,7 @@ function renderBoards(){
 /* =========================================================
    screens & UI
    ========================================================= */
-const SCREENS=['menu','shop','boardScr','levelup','pause','over'];
+const SCREENS=['menu','shop','boardScr','levelup','pause','over','revive','adScr'];
 function showScreen(id){for(const s of SCREENS)$('#'+s).hidden=s!==id;$('#hud').hidden=!(state==='play'||state==='levelup'||state==='pause'||state==='dead');
   if(state!=='play'){input.joy=null;$('#joy').hidden=true}}
 /* ---------- daily challenges: three a day, same for everyone, coins when done ---------- */
@@ -2295,7 +2338,7 @@ function renderDaily(el,compact){
 }
 /* ---------- save & continue an unfinished drive ---------- */
 const RUN_KEY='ld.run',RUN_V=1;
-const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh','jumps'];
+const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh','jumps','revived'];
 function clearRun(){try{localStorage.removeItem(RUN_KEY)}catch(e){}}
 function saveRun(){
   if(!G||attract||G.dead||!['play','pause','levelup'].includes(state))return;
@@ -2412,6 +2455,41 @@ function startRun(){
   banner(THEME.name,'You start with an Auto Turret (Lv 1) · '+(input.touch?'tap NITRO when it is full':'Space fires nitro when full'));
   $('#moveHint').hidden=!input.touch;
 }
+/* ---------- second chance: watch an ad, come back with 25% health (once per drive) ---------- */
+// Ads.showRewarded is the one place to plug in a real ad network's rewarded-video call.
+// It must call done(true) only when the viewer watched to the end, and done(false) if it was skipped or failed.
+const Ads={
+  showRewarded(done){
+    const AD_SECS=5;let left=AD_SECS;state='ad';showScreen('adScr');
+    const cnt=$('#adCount'),bar=$('#adBar'),claim=$('#adClaim'),skip=$('#adSkip');claim.hidden=true;skip.hidden=false;cnt.textContent=left;bar.style.width='0%';
+    const t0=performance.now();
+    const tick=setInterval(()=>{const e=(performance.now()-t0)/1000;left=Math.max(0,Math.ceil(AD_SECS-e));cnt.textContent=left;bar.style.width=Math.min(100,e/AD_SECS*100)+'%';
+      if(e>=AD_SECS){clearInterval(tick);claim.hidden=false;skip.hidden=true;$('#adNote').textContent='Thanks for watching!';claim.focus({preventScroll:true})}},100);
+    $('#adNote').textContent='Your reward is ready when the timer ends.';
+    claim.onclick=()=>{clearInterval(tick);done(true)};skip.onclick=()=>{clearInterval(tick);done(false)};
+  }
+};
+let reviveTimer=null;
+function offerRevive(){
+  state='revive';showScreen('revive');sfx('level');
+  const REV_SECS=8,t0=performance.now();const bar=$('#revBar');bar.style.width='100%';
+  clearInterval(reviveTimer);reviveTimer=setInterval(()=>{const f=1-(performance.now()-t0)/1000/REV_SECS;bar.style.width=Math.max(0,f*100)+'%';if(f<=0&&state==='revive'){clearInterval(reviveTimer);declineRevive()}},50);
+  setTimeout(()=>{const b=$('#revWatch');if(b&&state==='revive')b.focus({preventScroll:true})},50);
+}
+function declineRevive(){clearInterval(reviveTimer);if(G&&(state==='revive'||state==='ad')){G.revived=true;gameOver()}}
+function watchRevive(){
+  if(state!=='revive')return;clearInterval(reviveTimer);
+  Ads.showRewarded(ok=>{if(ok)revive();else declineRevive()});
+}
+function revive(){
+  if(!G)return;const c=G.car;G.revived=true;G.dead=false;G.deadT=0;S=stats();
+  c.hp=Math.max(1,Math.round(S.maxHp*.25));c.vx=c.vy=0;c.z=0;c.vz=0;G.invuln=2.5;G.dmgFlash=0;G.combo=0;
+  // clear some room: blast the closest zombies away
+  queryZ(c.x,c.y,190,z=>{const d=Math.hypot(z.x-c.x,z.y-c.y)||1;hurt(z,z.type==='boss'?0:(d<110?999:30),(z.x-c.x)/d*700,(z.y-c.y)/d*700,'blast')});
+  G.acid=G.acid.filter(a=>dist2(a.x,a.y,c.x,c.y)>220*220);G.puddles=G.puddles.filter(a=>dist2(a.x,a.y,c.x,c.y)>220*220);
+  G.rings.push({x:c.x,y:c.y,r:0,max:190,t:0,dur:.45,col:'#ffd34a'});shake(6);V.flash=1.5;sfx('chest');
+  state='play';lastHud={};showScreen(null);banner('Back on the road!','25% health · a few seconds of safety');saveRun();
+}
 async function gameOver(){
   clearRun();state='over';showScreen('over');
   const run={time:G.t,kills:G.kills,level:G.level};
@@ -2432,7 +2510,7 @@ $('#playBtn').onclick=startRun;$('#againBtn').onclick=startRun;
 $('#shopBtn').onclick=()=>{Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#overShop').onclick=()=>{state='menu';G=null;Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
-$('#overMenu').onclick=toMenu;$('#pauseBtn').onclick=pauseGame;$('#contBtn').onclick=continueRun;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
+$('#overMenu').onclick=toMenu;$('#revWatch').onclick=watchRevive;$('#revNo').onclick=declineRevive;$('#pauseBtn').onclick=pauseGame;$('#contBtn').onclick=continueRun;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
 const muteLabel=()=>{$('#engineToggle').textContent='Engine sound: '+(engineOn?'on':'off');$('#muteToggle').textContent='Sound: '+(muted?'off':'on');$('#musicToggle').textContent='Music: '+(musicOn?'on':'off');const hm=$('#homeMusic');hm.textContent=musicOn?'♪ Music on':'♪ Music off';hm.setAttribute('aria-pressed',musicOn)};muteLabel();
 $('#muteToggle').onclick=()=>{audioInit();setMuted(!muted);muteLabel()};
 $('#engineToggle').onclick=()=>{audioInit();setEngine(!engineOn);muteLabel()};
