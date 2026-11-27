@@ -618,28 +618,29 @@ function viewEdge(a){ // distance from the car to the visible ground edge in dir
    city: irregular streets inside a sealed square
    ========================================================= */
 const TILE=48,MAPN=66,WORLD=MAPN*TILE;
-const T_ROAD=0,T_WALK=1,T_BLDG=2,T_GRASS=3,T_LOT=4,T_FOUNT=5;
+const T_ROAD=0,T_WALK=1,T_BLDG=2,T_GRASS=3,T_LOT=4,T_FOUNT=5,T_WATER=6;
 let grid,bIndex,buildings=[],lights=[],trees=[],props=[],fountains=[],parks=[],roadXs=[],roadYs=[];
 let START={x:WORLD/2,y:WORLD/2},SHOW={x:WORLD/2,y:WORLD/2};
 const ROOFS=['#4a4f5c','#5a4e48','#3f4a52','#5b5446','#4d4757','#3d4e4a','#585b62','#62493f','#4f4a3c','#3b4250'];
 const FACADES=['#8a8f9c','#9c8a7c','#7f8b94','#a39a86','#8c8597','#7d8f88','#998c84','#a0917a','#7c8597'];
 function tileAt(tx,ty){if(tx<0||ty<0||tx>=MAPN||ty>=MAPN)return T_BLDG;return grid[ty*MAPN+tx]}
-function solidT(tx,ty){const t=tileAt(tx,ty);return t===T_BLDG||t===T_FOUNT}
+function solidT(tx,ty){const t=tileAt(tx,ty);return t===T_BLDG||t===T_FOUNT||t===T_WATER}
 let roads=[];const ROAD_HW=50;
 let ramps=[];const RAMP={len:66,w:56,h:14};
+let river=null,riverHW=60,overpass=null,pillars=[],nearRiver=null; // river: centre polyline; overpass: {pts,H}
 function catmull(pts,steps){const out=[];for(let i=0;i<pts.length-1;i++){const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
   for(let k=0;k<steps;k++){const t=k/steps,t2=t*t,t3=t2*t;out.push([.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
     .5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)])}}
   out.push(pts[pts.length-1]);return out}
 /* districts: each run picks one, never the same as last time */
 const THEMES=[
-  {id:'downtown',name:'Downtown',sub:'Towers and tight streets',roads:'grid',types:[.55,.15,.12,.18],size:[2,4],cover:[.42,.58],hMul:1.45,tierP:.55,yard:.18,trees:.6,
+  {id:'downtown',river:{hw:62,wall:'#61656e',coping:'#8a8f99',rail:'#2f343c',style:'rail'},overpass:true,name:'Downtown',sub:'Towers and tight streets',roads:'grid',types:[.55,.15,.12,.18],size:[2,4],cover:[.42,.58],hMul:1.45,tierP:.55,yard:.18,trees:.6,
    roofs:['#4a4f5c','#3f4a52','#4d4757','#585b62','#3b4250','#52505a'],facades:['#8a8f9c','#7f8b94','#8c8597','#7c8597','#9aa0aa'],win:[0,1,2],light:'#ffad4a',fog:'#0b0e16',sky:['#8796c8','#2b241b']},
-  {id:'suburbs',name:'The Suburbs',sub:'Quiet houses, lots of trees',roads:'curvy',types:[.42,.4,.1,.08],size:[2,2],cover:[.25,.38],hMul:.45,tierP:0,yard:.35,trees:1.8,pitched:true,
+  {id:'suburbs',river:{hw:48,wall:'#5a4a36',coping:'#7d6c50',rail:'#7a5634',style:'wood'},name:'The Suburbs',sub:'Quiet houses, lots of trees',roads:'curvy',types:[.42,.4,.1,.08],size:[2,2],cover:[.25,.38],hMul:.45,tierP:0,yard:.35,trees:1.8,pitched:true,
    roofs:['#7a3a2c','#6a4a3a','#3a4a5a','#5a3a3a','#7a5a3a','#4a5a3a'],facades:['#d8cfbf','#c9b79c','#a9b4bf','#c4c9a8','#d6b8a8','#b8a898'],win:[1,3],light:'#ffd08a',fog:'#0e1218',sky:['#8aa0c8','#2e2a1e']},
-  {id:'industrial',name:'Industrial Docks',sub:'Warehouses, yards and containers',roads:'grid',types:[.5,.06,.38,.06],size:[3,4],cover:[.35,.5],hMul:.55,tierP:.1,yard:.15,trees:.3,containers:true,
+  {id:'industrial',river:{hw:76,wall:'#565d66',coping:'#7b828c',rail:'#9a4a2e',style:'steel'},overpass:true,name:'Industrial Docks',sub:'Warehouses, yards and containers',roads:'grid',types:[.5,.06,.38,.06],size:[3,4],cover:[.35,.5],hMul:.55,tierP:.1,yard:.15,trees:.3,containers:true,
    roofs:['#5a6068','#4a525c','#6a5a48','#56606a','#3e4650'],facades:['#7a8088','#6a7480','#8a7a68','#5f6a74'],win:[3],light:'#a9d8ff',fog:'#0a1016',sky:['#7aa0c0','#1e2226']},
-  {id:'oldtown',name:'Old Town',sub:'A central square with roads in every direction',roads:'radial',types:[.45,.2,.08,.27],size:[2,3],cover:[.35,.5],hMul:.8,tierP:.3,yard:.25,trees:1,
+  {id:'oldtown',river:{hw:58,wall:'#6e604e',coping:'#a08f72',rail:'#9a8a70',style:'stone'},name:'Old Town',sub:'A central square with roads in every direction',roads:'radial',types:[.45,.2,.08,.27],size:[2,3],cover:[.35,.5],hMul:.8,tierP:.3,yard:.25,trees:1,
    roofs:['#62493f','#5a4e48','#5b5446','#4f4a3c','#6a4a3a'],facades:['#9c8a7c','#a39a86','#998c84','#a0917a','#b0a088'],win:[0,1],light:'#ffb84a',fog:'#100d0c',sky:['#a08870','#2a2018']},
 ];
 let THEME=THEMES[0],KEEP_THEME=false;
@@ -693,10 +694,11 @@ function genCity(){
 function genCityLayout(){
   const N=MAPN;const U=255;
   grid=new Uint8Array(N*N).fill(U);bIndex=new Int16Array(N*N).fill(-1);
-  buildings=[];lights=[];trees=[];props=[];ramps=[];fountains=[];parks=[];roadXs=[];roadYs=[];
+  buildings=[];lights=[];trees=[];props=[];ramps=[];river=null;overpass=null;pillars=[];fountains=[];parks=[];roadXs=[];roadYs=[];
   roads=makeRoads();
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<2||y<2||x>=N-2||y>=N-2||distToRoads((x+.5)*TILE,(y+.5)*TILE)<=ROAD_HW+6)grid[y*N+x]=T_ROAD}
   if(roads.roundabout){const ra=roads.roundabout;for(let y=0;y<N;y++)for(let x=0;x<N;x++){const d=Math.hypot((x+.5)*TILE-ra.x,(y+.5)*TILE-ra.y);if(d<ra.r-ROAD_HW-20&&x>2&&y>2&&x<N-3&&y<N-3)grid[y*N+x]=T_GRASS}}
+  makeRiver();makeOverpass();
   // regions of non-road tiles
   const reg=new Int32Array(N*N).fill(-1);const regions=[];
   for(let i=0;i<N*N;i++){if(grid[i]!==U||reg[i]>=0)continue;const id=regions.length;const tiles=[];const q=[i];reg[i]=id;
@@ -755,6 +757,7 @@ function genCityLayout(){
   for(let i=0;i<30&&lots.length;i++){const k=pick(lots);const x=(k%N+.5)*TILE,y=(((k/N)|0)+.5)*TILE;if(okSpot(x,y,70)&&Math.random()<.5)props.push({kind:'car',x,y,r:19,a:(Math.random()<.5?Math.PI/2:-Math.PI/2)+rand(-.25,.25),col:pick(WRECK),burn:false})}
   if(THEME.containers)for(let i=0;i<70&&lots.length;i++){const k=pick(lots);const x=(k%N+.5)*TILE,y=(((k/N)|0)+.5)*TILE;if(okSpot(x,y,64)){const a=Math.random()<.5?0:Math.PI/2;props.push({kind:'container',x,y,r:11,a,col:pick(['#a8452c','#2c6a8a','#3a7a4a','#b08a2a','#6a3a6a'])});for(const d of [-12,12])props.push({kind:'blocker',x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,r:11})}}
   for(let i=0;i<60;i++){const k=pick(walks);const x=(k%N+.5)*TILE+rand(-14,14),y=(((k/N)|0)+.5)*TILE+rand(-14,14);if(okSpot(x,y,90))props.push({kind:Math.random()<.65?'barrel':'crate',x,y,r:Math.random()<.65?8:11,a:rand(0,6.28),col:pick(['#b4562a','#3f6a8a','#8a7a2a','#6a3a2a'])})}
+  if(river){const far=(o,m)=>nearestOn(river,o.x,o.y).d>riverHW+m;lights=lights.filter(l=>far(l,16));props=props.filter(p=>far(p,26));trees=trees.filter(t=>far(t,t.r*.6+6))}
   placeRamps();
 }
 
@@ -772,8 +775,60 @@ function placeRamps(){
   for(const c of cand){if(ramps.length>=4)break;
     if(dist2(c.x,c.y,START.x,START.y)<380*380||ramps.some(r=>dist2(r.x,r.y,c.x,c.y)<700*700)||props.some(p=>dist2(p.x,p.y,c.x,c.y)<110*110))continue;
     if(roads.roundabout&&Math.hypot(c.x-roads.roundabout.x,c.y-roads.roundabout.y)<roads.roundabout.r+160)continue;
+    if(river&&nearestOn(river,c.x,c.y).d<riverHW+200)continue;
+    if(overpass&&nearestOn(overpass.pts,c.x,c.y).d<140)continue;
     ramps.push(c)}
 }
+
+/* ---------- geometry helpers ---------- */
+function nearestOn(pl,px,py){let best=1e18,bx=0,by=0,bi=0;
+  for(let i=0;i<pl.length-1;i++){const ax=pl[i][0],ay=pl[i][1],dx=pl[i+1][0]-ax,dy=pl[i+1][1]-ay;const l=dx*dx+dy*dy;let t=l?((px-ax)*dx+(py-ay)*dy)/l:0;t=t<0?0:t>1?1:t;
+    const x=ax+dx*t,y=ay+dy*t,d=(x-px)*(x-px)+(y-py)*(y-py);if(d<best){best=d;bx=x;by=y;bi=i}}
+  return{d:Math.sqrt(best),x:bx,y:by,i:bi}}
+function nearestRoad(px,py){let b=null;for(const pl of roads){const n=nearestOn(pl,px,py);if(!b||n.d<b.d)b=n}return b}
+const polyLen=pl=>{let L=0;for(let i=1;i<pl.length;i++)L+=Math.hypot(pl[i][0]-pl[i-1][0],pl[i][1]-pl[i-1][1]);return L};
+
+/* ---------- a river or canal across the city; roads cross it on bridges ---------- */
+function makeRiver(){
+  const R=THEME.river;if(!R)return;riverHW=R.hw;const W=WORLD,N=MAPN;let best=null;
+  for(let k=0;k<16;k++){
+    const horiz=Math.random()<.5,base=W*rand(.3,.7),wig=()=>rand(-1,1)*TILE*2.2;const ctl=[];
+    for(let i=0;i<=6;i++){const u=-TILE*2+i/6*(W+TILE*4);const v=base+(i===0||i===6?0:wig());ctl.push(horiz?[u,v]:[v,u])}
+    const pl=catmull(ctl,12);
+    if(roads.roundabout&&nearestOn(pl,roads.roundabout.x,roads.roundabout.y).d<roads.roundabout.r+riverHW+90)continue;
+    // score: how much of the river runs alongside roads (long bridges look odd)
+    let sc=0;for(const p of pl){if(p[0]<0||p[1]<0||p[0]>W||p[1]>W)continue;if(distToRoads(p[0],p[1])<ROAD_HW+riverHW+10)sc++}
+    sc+=Math.abs(base-W/2)/W*4; // prefer rivers nearer the middle
+    if(!best||sc<best.sc)best={pl,sc}}
+  if(!best)return;river=best.pl;
+  nearRiver=new Uint8Array(N*N);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){const i=y*N+x;const d=nearestOn(river,(x+.5)*TILE,(y+.5)*TILE).d;
+    if(d<riverHW+70)nearRiver[i]=1;
+    if(grid[i]!==T_ROAD&&d<riverHW-12)grid[i]=T_WATER}
+}
+function riverPush(o,r){ // exact banks: the tile grid is too coarse for the curved water edge
+  if(!river)return false;const tx=Math.floor(o.x/TILE),ty=Math.floor(o.y/TILE);if(tx<0||ty<0||tx>=MAPN||ty>=MAPN||!nearRiver[ty*MAPN+tx])return false;
+  const n=nearestOn(river,o.x,o.y);const lim=riverHW+r*.6;if(n.d>=lim)return false;
+  let outD=lim-n.d,inD=1e9,rd=null;
+  if(tileAt(tx,ty)===T_ROAD||n.d>riverHW-40){rd=nearestRoad(o.x,o.y);const allow=ROAD_HW-r*.55;if(rd.d<=allow)return false;inD=rd.d-allow}
+  if(inD<outD&&rd){const k=inD/rd.d;o.nx=(rd.x-o.x)/rd.d;o.ny=(rd.y-o.y)/rd.d;o.x+=(rd.x-o.x)*k;o.y+=(rd.y-o.y)*k}
+  else{const d=n.d||1;const ux=(o.x-n.x)/d,uy=(o.y-n.y)/d;o.x+=ux*outD;o.y+=uy*outD;o.nx=ux;o.ny=uy}
+  return true}
+
+/* ---------- collapsed elevated highway over part of a main road, on concrete pillars ---------- */
+function makeOverpass(){
+  if(!THEME.overpass)return;
+  const cands=roads.slice(1).filter(pl=>pl.length>=30&&Math.hypot(pl[0][0]-pl[pl.length-1][0],pl[0][1]-pl[pl.length-1][1])>WORLD*.5);if(!cands.length)return;
+  const pl=pick(cands),n=pl.length,i0=Math.floor(n*rand(.12,.28)),i1=Math.min(n-2,i0+Math.floor(n*rand(.42,.55)));
+  overpass={pts:pl.slice(i0,i1+1).map(p=>[p[0],p[1]]),H:84};
+  let acc=140;const P=overpass.pts;
+  for(let i=1;i<P.length-1;i++){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(acc<260)continue;
+    const [x,y]=P[i];if(river&&nearestOn(river,x,y).d<riverHW+70)continue;
+    let cross=false;for(const q of roads){if(q===pl)continue;if(nearestOn(q,x,y).d<ROAD_HW+60){cross=true;break}}if(cross)continue;
+    pillars.push({x,y,r:12});acc=0}
+}
+function pillarPush(o,r){let hit=false;for(const p of pillars){const dx=o.x-p.x,dy=o.y-p.y,rr=p.r+r;const d2=dx*dx+dy*dy;if(d2>=rr*rr)continue;
+  const d=Math.sqrt(d2)||1;o.x=p.x+dx/d*rr;o.y=p.y+dy/d*rr;o.nx=dx/d;o.ny=dy/d;hit=true}return hit}
 /* =========================================================
    audio: everything is synthesized live with Web Audio
    (music sequencer, engine, effects). Starts on first gesture.
@@ -1063,7 +1118,8 @@ function flowDir(x,y){
 
 /* ---------- collision with buildings ---------- */
 function resolveSolid(o,r){
-  let hit=false;const tx0=Math.floor((o.x-r)/TILE),tx1=Math.floor((o.x+r)/TILE),ty0=Math.floor((o.y-r)/TILE),ty1=Math.floor((o.y+r)/TILE);
+  let hit=false;
+  if(r>=8){if(riverPush(o,r))hit=true;if(pillars.length&&pillarPush(o,r))hit=true}const tx0=Math.floor((o.x-r)/TILE),tx1=Math.floor((o.x+r)/TILE),ty0=Math.floor((o.y-r)/TILE),ty1=Math.floor((o.y+r)/TILE);
   for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){
     if(!solidT(tx,ty))continue;
     const rx=tx*TILE,ry=ty*TILE;const nx=clamp(o.x,rx,rx+TILE),ny=clamp(o.y,ry,ry+TILE);
@@ -1835,6 +1891,71 @@ function drawGround(g,s){
   // contact shadows at the foot of every building
   g.save();g.shadowColor='rgba(0,0,0,.85)';g.shadowBlur=26;g.fillStyle='#15171c';for(const b of buildings)g.fillRect(b.x-2,b.y-2,b.w+4,b.h+4);g.restore();
   g.restore();
+  if(river){ // coping stones along the banks, then cut the water out of the ground (roads stay: they are the bridge decks)
+    const cw=g.canvas.width,c2=document.createElement('canvas');c2.width=cw;c2.height=cw;const x=c2.getContext('2d');
+    const reset=()=>{x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,cw,cw);x.setTransform(s,0,0,s,0,0);x.lineCap='round';x.lineJoin='round';x.globalCompositeOperation='source-over'};
+    const strokePl=(pl,w,c)=>{x.strokeStyle=c;x.lineWidth=w;x.beginPath();x.moveTo(pl[0][0],pl[0][1]);for(let i=1;i<pl.length;i++)x.lineTo(pl[i][0],pl[i][1]);x.stroke()};
+    const cutRoads=()=>{x.globalCompositeOperation='destination-out';for(const pl of roads)strokePl(pl,ROAD_HW*2+16,'#000');x.globalCompositeOperation='source-over'};
+    reset();strokePl(river,riverHW*2+18,'#07080b');strokePl(river,riverHW*2+12,THEME.river.coping);cutRoads();g.drawImage(c2,0,0);
+    reset();strokePl(river,riverHW*2,'#000');cutRoads();g.globalCompositeOperation='destination-out';g.drawImage(c2,0,0);g.globalCompositeOperation='source-over';
+    c2.width=c2.height=1}
+}
+/* ---------- river, bridges, overpass ---------- */
+let waterTex=null,overpassMats=[],overpassFade=1;
+function plNormals(pl){return pl.map((p,i)=>{const a=pl[Math.max(0,i-1)],b=pl[Math.min(pl.length-1,i+1)];const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;return[-dy/l,dx/l]})}
+function ribbonGeo(pl,nrm,o1,y1,o2,y2,uvScale){const pos=[],uv=[],idx=[];let L=0;
+  pl.forEach((p,i)=>{if(i)L+=Math.hypot(p[0]-pl[i-1][0],p[1]-pl[i-1][1]);const n=nrm[i];pos.push(p[0]+n[0]*o1,y1,p[1]+n[1]*o1,p[0]+n[0]*o2,y2,p[1]+n[1]*o2);const k=uvScale||128;uv.push(L/k,0,L/k,Math.hypot(o2-o1,y2-y1)/k)});
+  for(let i=0;i<pl.length-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2)}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();return geo}
+function samplePl(pl,step,cb){for(let i=0;i<pl.length-1;i++){const ax=pl[i][0],ay=pl[i][1],dx=pl[i+1][0]-ax,dy=pl[i+1][1]-ay,l=Math.hypot(dx,dy);if(!l)continue;const ux=dx/l,uy=dy/l;
+  for(let t=(i?0:step/2);t<l;t+=step)cb(ax+ux*t,ay+uy*t,ux,uy)}}
+function instBoxes(list,w,h,d,mat,cast){if(!list.length)return null;const im=new THREE.InstancedMesh(new THREE.BoxGeometry(w,h,d),mat,list.length);
+  list.forEach((q,i)=>{_o.position.set(q[0],q[1],q[2]);_o.rotation.set(0,q[3],0);_o.scale.set(1,1,1);_o.updateMatrix();im.setMatrixAt(i,_o.matrix)});im.castShadow=!!cast;im.receiveShadow=true;return im}
+function buildRiver3D(add){
+  if(!river)return;const R=THEME.river,pl=river,nrm=plNormals(pl),DEP=22;
+  if(!waterTex){waterTex=canvasTex(256,256,(g)=>{g.fillStyle='#ffffff';g.fillRect(0,0,256,256);for(let i=0;i<70;i++){g.strokeStyle=`rgba(${Math.random()<.5?'170,220,255':'20,40,60'},${rand(.15,.4)})`;g.lineWidth=rand(1,3);const x=Math.random()*256,y=Math.random()*256,l=rand(20,70);g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+l/2,y+rand(-4,4),x+l,y);g.stroke();g.beginPath();g.moveTo(x-256,y);g.lineTo(x-256+l,y);g.stroke()}});waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping}
+  const water=add(new THREE.Mesh(ribbonGeo(pl,nrm,-riverHW-30,-DEP+4,riverHW+30,-DEP+4,200),lam('#1a3f4c',{map:waterTex,emissive:'#04121a',side:THREE.DoubleSide})));water.receiveShadow=true;
+  const wallM=lam(R.wall,{side:THREE.DoubleSide});
+  for(const sd of [-1,1]){const w=add(new THREE.Mesh(ribbonGeo(pl,nrm,sd*riverHW,0,sd*riverHW,-DEP,60),wallM));w.receiveShadow=true;
+    const ln=add(new THREE.Mesh(ribbonGeo(pl,nrm,sd*riverHW,-DEP+5,sd*(riverHW-1),-DEP+4.6,60),basic('#0b1418',{side:THREE.DoubleSide})))} // damp waterline
+  // bridges: deck slabs, railings and piers wherever a road crosses the water
+  const slabs=[],rails=[],posts=[],piers=[];const RH=ROAD_HW+7;
+  for(const rp of roads)samplePl(rp,20,(x,y,ux,uy)=>{const a=-Math.atan2(uy,ux);
+    if(nearestOn(river,x,y).d<riverHW+6)slabs.push([x,-6.8,y,a]);
+    for(const sd of [-1,1]){const sx=x-uy*RH*sd,sy=y+ux*RH*sd;if(nearestOn(river,sx,sy).d<riverHW-2){rails.push([sx,R.style==='stone'?5:10,sy,a]);posts.push([sx,R.style==='steel'?10:5,sy,a])}}});
+  for(const rp of roads)for(let i=0;i<rp.length-1;i++)for(let j=0;j<pl.length-1;j++){const p=segX(rp[i],rp[i+1],pl[j],pl[j+1]);if(!p)continue;
+    if(piers.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<80))continue;const ra=-Math.atan2(pl[j+1][1]-pl[j][1],pl[j+1][0]-pl[j][0]);piers.push([p[0],-DEP/2-3,p[1],ra])}
+  const deckM=lam('#3a3e47');const sl=instBoxes(slabs,22,12,ROAD_HW*2+16,deckM,false);if(sl)add(sl);
+  const railM=lam(R.rail);
+  if(R.style==='stone'){const r=instBoxes(rails,22,10,6,railM,true);if(r){add(r);inkInst(r,.8)}}
+  else{const r=instBoxes(rails,22,R.style==='wood'?3.5:2.5,R.style==='wood'?4:3,railM,true);if(r){add(r);inkInst(r,.7)}
+    const p=instBoxes(posts.filter((q,i)=>i%2===0),R.style==='steel'?4:3,R.style==='steel'?20:11,R.style==='steel'?4:3,railM,true);if(p){add(p);inkInst(p,.7)}}
+  const pr=instBoxes(piers,40,DEP,ROAD_HW*1.6,lam(R.wall),false);if(pr){add(pr)}
+}
+function segX(a,b,c,d){const r1x=b[0]-a[0],r1y=b[1]-a[1],r2x=d[0]-c[0],r2y=d[1]-c[1];const den=r1x*r2y-r1y*r2x;if(Math.abs(den)<1e-9)return null;
+  const t=((c[0]-a[0])*r2y-(c[1]-a[1])*r2x)/den,u=((c[0]-a[0])*r1y-(c[1]-a[1])*r1x)/den;if(t<0||t>1||u<0||u>1)return null;return[a[0]+r1x*t,a[1]+r1y*t]}
+function buildOverpass3D(add){
+  overpassMats=[];overpassFade=1;if(!overpass)return;const P=overpass.pts,H=overpass.H,nrm=plNormals(P),HW=46,TH=10;
+  const top=lam('#5d626c',{side:THREE.DoubleSide}),under=lam('#4a4f58',{side:THREE.DoubleSide}),barrier=lam('#a7a59d',{side:THREE.DoubleSide}),pil=lam('#8a8f99');
+  overpassMats.push(top,under,barrier);
+  const parts=[ribbonGeo(P,nrm,-HW,H,HW,H),ribbonGeo(P,nrm,-HW,H-TH,HW,H-TH)];
+  const meshes=[];const m1=add(new THREE.Mesh(parts[0],top));const m2=add(new THREE.Mesh(parts[1],under));meshes.push(m1,m2);
+  for(const sd of [-1,1]){meshes.push(add(new THREE.Mesh(ribbonGeo(P,nrm,sd*HW,H+9,sd*HW,H-TH),barrier)))}
+  for(const m of meshes){m.castShadow=true;m.receiveShadow=true}
+  // dashed lane line on the deck
+  const dashes=[];samplePl(P,46,(x,y,ux,uy)=>dashes.push([x,H+.4,y,-Math.atan2(uy,ux)]));const dm=basic('#c9a24a',{transparent:true});overpassMats.push(dm);const ds=instBoxes(dashes,22,.4,3,dm,false);if(ds)add(ds);
+  // pillars with a cap under the deck
+  for(const p of pillars){const c=add(new THREE.Mesh(new THREE.CylinderGeometry(p.r,p.r+2,H-TH,12),pil));c.position.set(p.x,(H-TH)/2,p.y);c.castShadow=true;c.receiveShadow=true;ink(c,1);
+    const n=nearestOn(P,p.x,p.y),a=P[Math.min(P.length-1,n.i+1)],b=P[n.i];const cap=add(new THREE.Mesh(new THREE.BoxGeometry(28,8,HW*2-8),pil));cap.position.set(p.x,H-TH-4,p.y);cap.rotation.y=-Math.atan2(a[1]-b[1],a[0]-b[0]);ink(cap,1)}
+  // broken ends: a slab hanging down and rebar sticking out
+  for(const end of [0,1]){const i=end?P.length-1:0,j=end?P.length-2:1;const ux=(P[i][0]-P[j][0]),uy=(P[i][1]-P[j][1]),l=Math.hypot(ux,uy)||1;const dx=ux/l,dy=uy/l;
+    const g=new THREE.Group();g.position.set(P[i][0],H-TH/2,P[i][1]);g.rotation.y=-Math.atan2(dy,dx);
+    const slab=new THREE.Mesh(new THREE.BoxGeometry(44,TH,HW*1.4),top);slab.position.set(20,0,-8);const hinge=new THREE.Group();hinge.rotation.z=-.62;hinge.add(slab);g.add(hinge);slab.castShadow=true;ink(slab,1);
+    for(let k=0;k<7;k++){const r=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,rand(12,26),5),lam('#5a3a2a'));r.rotation.z=Math.PI/2+rand(-.5,.5);r.position.set(rand(4,12),rand(-3,3),rand(-HW+6,HW-6));g.add(r)}
+    add(g)}
+  // a couple of wrecks stranded up top
+  for(let k=0;k<2;k++){const i=Math.floor(P.length*(.3+k*.35)),q=P[i],q2=P[Math.min(P.length-1,i+1)];const g=new THREE.Group();const b=new THREE.Mesh(new THREE.BoxGeometry(44,10,22),lam(pick(['#5a3a32','#3a4450','#4d4a3a'])));b.position.y=6;const t=new THREE.Mesh(new THREE.BoxGeometry(21,7,19),lam('#22344a'));t.position.set(-2,14.5,0);g.add(b,t);
+    g.position.set(q[0]+nrm[i][0]*rand(-20,20),H,q[1]+nrm[i][1]*rand(-20,20));g.rotation.y=-Math.atan2(q2[1]-q[1],q2[0]-q[0])+rand(-.6,.6);g.traverse(o=>{if(o.isMesh){o.castShadow=true;overpassMats.push(o.material)}});add(g)}
 }
 function build3DCity(){
   if(!renderer)return;
@@ -1844,8 +1965,10 @@ function build3DCity(){
   // ground
   const max=renderer.capabilities.maxTextureSize||2048;const ts=(!COARSE&&max>=4096)?4096:2048;
   const gt=canvasTex(ts,ts,(g)=>drawGround(g,ts/WORLD));gt._own=true;gt.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
-  const ground=add(new THREE.Mesh(new THREE.PlaneGeometry(WORLD,WORLD).rotateX(-Math.PI/2),lam('#ffffff',{map:gt})));ground.position.set(WORLD/2,0,WORLD/2);ground.receiveShadow=true;
-  const outer=add(new THREE.Mesh(new THREE.PlaneGeometry(WORLD*5,WORLD*5).rotateX(-Math.PI/2),lam('#191b20')));outer.position.set(WORLD/2,-.6,WORLD/2);outer.receiveShadow=true;
+  const ground=add(new THREE.Mesh(new THREE.PlaneGeometry(WORLD,WORLD).rotateX(-Math.PI/2),lam('#ffffff',{map:gt,alphaTest:.5})));ground.position.set(WORLD/2,0,WORLD/2);ground.receiveShadow=true;
+  {const om=lam('#191b20'),O=WORLD*2; // surroundings as four strips, so nothing covers the river below street level
+    for(const [w,d,x,z] of [[WORLD+2*O,O,WORLD/2,-O/2],[WORLD+2*O,O,WORLD/2,WORLD+O/2],[O,WORLD,-O/2,WORLD/2],[O,WORLD,WORLD+O/2,WORLD/2]]){const o=add(new THREE.Mesh(new THREE.PlaneGeometry(w,d).rotateX(-Math.PI/2),om));o.position.set(x,-.6,z);o.receiveShadow=true}}
+  buildRiver3D(add);buildOverpass3D(add);
   // perimeter: jersey barriers, chain-link fence, wrecks
   const segs=[];const step=58;
   for(let p=step/2;p<WORLD;p+=step){segs.push([p,-14,0],[p,WORLD+14,0],[-14,p,Math.PI/2],[WORLD+14,p,Math.PI/2])}
@@ -2104,6 +2227,11 @@ function render3D(now,dt){
     camera.position.set(c.x+Math.cos(t)*dist,dist*.38+16,c.y+Math.sin(t)*dist);camera.lookAt(c.x,10,c.y);tx=c.x;ty=c.y;
   }
   moon.position.set(tx+380,900,ty-520);moon.target.position.set(tx,0,ty);moon.target.updateMatrixWorld();
+  const cp0=camera.position;
+  if(waterTex)waterTex.offset.x=(now*.00003)%1;
+  if(overpass&&overpassMats.length){let hide=false;const P=overpass.pts;
+    for(let i=0;i<=8&&!hide;i++){const t=i/8*.5;const sx=lerp(c.x,cp0.x,t),sy=lerp(c.y,cp0.z,t),sh=lerp(10,cp0.y,t);if(sh<overpass.H+10&&nearestOn(P,sx,sy).d<56)hide=true}
+    const want=hide?.2:1;if(Math.abs(overpassFade-want)>.01){overpassFade=lerp(overpassFade,want,Math.min(1,dt*8));const tr=overpassFade<.98;for(const m of overpassMats){m.transparent=tr;m.opacity=overpassFade;m.depthWrite=!tr}}}
   // fade buildings that hide the car
   const cp=camera.position;for(const b of buildings)b.want=1;
   for(let i=1;i<=22;i++){const t=i/22;for(const off of [-34,0,34]){const sx=lerp(c.x+off,cp.x+off,t),sy=lerp(c.y,cp.z,t),sh=lerp(14,cp.y,t);
