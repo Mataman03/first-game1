@@ -319,6 +319,26 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 @keyframes lvpop{0%{transform:scale(1)}30%{transform:scale(1.45);background:#fff}100%{transform:scale(1)}}
 @media (max-width:640px){#lvBadge{width:58px;height:58px}#lvBadge .lvcore{inset:8px}#lvBadge b{font-size:18px}#lvBadge small{font-size:9px}}
 @media (prefers-reduced-motion:reduce){#lvBadge.pop .lvcore{animation:none}}
+
+/* daily challenges */
+.daily{width:100%;box-sizing:border-box;padding:12px 14px;transform:rotate(.6deg)}
+.daily summary{list-style:none;cursor:pointer}.daily summary::-webkit-details-marker{display:none}
+.daily summary h3::after{content:"▾";font-size:14px;margin-left:auto}.daily[open] summary h3::after{content:"▴"}
+.daily[open] summary h3{margin-bottom:8px}.daily:not([open]) summary h3{margin-bottom:0}
+.daily .dreset{display:block;margin-top:8px;font-size:11px;color:#5a5446;text-align:right}
+.daily h3{font-size:18px;display:flex;align-items:baseline;gap:8px}
+.daily h3 small{font:700 12px var(--body);color:#a86b00;white-space:nowrap}
+.qlist{display:flex;flex-direction:column;gap:8px}
+.q{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center}
+.q .qt{font-size:13px;font-weight:500;line-height:1.3}
+.q .qr{font:400 14px var(--display);color:#a86b00;white-space:nowrap}
+.q .qb{display:block;height:8px;border:2px solid var(--ink);border-radius:5px;background:#ddd5c3;overflow:hidden}
+.q .qb i{display:block;height:100%;background:var(--sodium)}
+.q .qp{font-size:11px;font-weight:700;color:#5a5446;font-variant-numeric:tabular-nums;white-space:nowrap}
+.q.done .qt{color:#2f7a3a}.q.done .qb i{background:#58c46a}.q.done .qp{color:#2f7a3a}
+.qlist.dark .qt{color:var(--paper)}.qlist.dark .qr{color:var(--coin)}.qlist.dark .qb{background:var(--plate-2);border-color:#000}.qlist.dark .qp{color:var(--muted)}
+.qlist.dark .q.done .qt,.qlist.dark .q.done .qp{color:#8fd18f}
+.qlist.dark:empty{display:none}
 /* touch layout: smaller gauges */
 .touch .hud-bottom{left:max(16px,env(safe-area-inset-left,0px));transform:none;width:calc(100% - 160px)}
 .touch .speedo{width:58px;height:58px}
@@ -378,6 +398,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
           <div class="stk pill"><span>Your best</span><b id="mBest">--:--</b></div>
           <div class="stk pill coins"><span>Coins</span><b id="mCoins">0</b></div>
         </div>
+        <details class="stk daily" id="dailyBox"><summary><h3>Daily challenges <small id="dailySum"></small></h3></summary><div id="dailyList" class="qlist"></div><small class="dreset" id="dailyReset"></small></details>
         <button class="stk music-btn" id="homeMusic" aria-pressed="true">♪ Music on</button>
         <div class="stk top5">
           <h3>Longest alive <small id="miniState"></small></h3>
@@ -450,6 +471,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
       <div class="lv-title"><h2>Paused</h2></div>
       <div class="plate" style="display:flex;flex-direction:column;gap:12px">
         <div id="pauseBuild" class="hint"></div>
+        <div class="qlist dark" id="pauseDaily"></div>
         <button class="btn go" id="resumeBtn">Resume</button>
         <button class="btn" id="muteToggle">Sound: on</button>
         <button class="btn" id="musicToggle">Music: on</button>
@@ -471,6 +493,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
           <div class="stat"><span>Best combo</span><b id="oCombo">0</b></div>
           <div class="stat"><span>Coins</span><b class="coin" id="oCoins">+0</b></div>
         </div>
+        <div class="qlist dark" id="overDaily"></div>
         <p class="save-note" id="oNote"></p>
         <button class="btn go" id="againBtn">Drive again</button>
         <div class="row"><button class="btn" id="overShop">Garage</button><button class="btn" id="overMenu">Menu</button></div>
@@ -520,6 +543,7 @@ const FACADES=['#8a8f9c','#9c8a7c','#7f8b94','#a39a86','#8c8597','#7d8f88','#998
 function tileAt(tx,ty){if(tx<0||ty<0||tx>=MAPN||ty>=MAPN)return T_BLDG;return grid[ty*MAPN+tx]}
 function solidT(tx,ty){const t=tileAt(tx,ty);return t===T_BLDG||t===T_FOUNT}
 let roads=[];const ROAD_HW=50;
+let ramps=[];const RAMP={len:66,w:56,h:14};
 function catmull(pts,steps){const out=[];for(let i=0;i<pts.length-1;i++){const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
   for(let k=0;k<steps;k++){const t=k/steps,t2=t*t,t3=t2*t;out.push([.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
     .5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)])}}
@@ -586,7 +610,7 @@ function genCity(){
 function genCityLayout(){
   const N=MAPN;const U=255;
   grid=new Uint8Array(N*N).fill(U);bIndex=new Int16Array(N*N).fill(-1);
-  buildings=[];lights=[];trees=[];props=[];fountains=[];parks=[];roadXs=[];roadYs=[];
+  buildings=[];lights=[];trees=[];props=[];ramps=[];fountains=[];parks=[];roadXs=[];roadYs=[];
   roads=makeRoads();
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(x<2||y<2||x>=N-2||y>=N-2||distToRoads((x+.5)*TILE,(y+.5)*TILE)<=ROAD_HW+6)grid[y*N+x]=T_ROAD}
   if(roads.roundabout){const ra=roads.roundabout;for(let y=0;y<N;y++)for(let x=0;x<N;x++){const d=Math.hypot((x+.5)*TILE-ra.x,(y+.5)*TILE-ra.y);if(d<ra.r-ROAD_HW-20&&x>2&&y>2&&x<N-3&&y<N-3)grid[y*N+x]=T_GRASS}}
@@ -648,6 +672,24 @@ function genCityLayout(){
   for(let i=0;i<30&&lots.length;i++){const k=pick(lots);const x=(k%N+.5)*TILE,y=(((k/N)|0)+.5)*TILE;if(okSpot(x,y,70)&&Math.random()<.5)props.push({kind:'car',x,y,r:19,a:(Math.random()<.5?Math.PI/2:-Math.PI/2)+rand(-.25,.25),col:pick(WRECK),burn:false})}
   if(THEME.containers)for(let i=0;i<70&&lots.length;i++){const k=pick(lots);const x=(k%N+.5)*TILE,y=(((k/N)|0)+.5)*TILE;if(okSpot(x,y,64)){const a=Math.random()<.5?0:Math.PI/2;props.push({kind:'container',x,y,r:11,a,col:pick(['#a8452c','#2c6a8a','#3a7a4a','#b08a2a','#6a3a6a'])});for(const d of [-12,12])props.push({kind:'blocker',x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,r:11})}}
   for(let i=0;i<60;i++){const k=pick(walks);const x=(k%N+.5)*TILE+rand(-14,14),y=(((k/N)|0)+.5)*TILE+rand(-14,14);if(okSpot(x,y,90))props.push({kind:Math.random()<.65?'barrel':'crate',x,y,r:Math.random()<.65?8:11,a:rand(0,6.28),col:pick(['#b4562a','#3f6a8a','#8a7a2a','#6a3a2a'])})}
+  placeRamps();
+}
+
+/* ---------- jump ramps: a few on long straight stretches of road ---------- */
+function placeRamps(){
+  const cand=[];
+  for(const pl of roads){if(pl.length<8)continue;
+    for(let i=3;i<pl.length-3;i+=2){const a=Math.atan2(pl[i+2][1]-pl[i-2][1],pl[i+2][0]-pl[i-2][0]);
+      const a1=Math.atan2(pl[i][1]-pl[i-2][1],pl[i][0]-pl[i-2][0]),a2=Math.atan2(pl[i+2][1]-pl[i][1],pl[i+2][0]-pl[i][0]);
+      if(Math.abs(angDiff(a1,a2))>.1)continue;
+      const x=pl[i][0],y=pl[i][1];let ok=true;
+      for(let d=-240;d<=240&&ok;d+=30){const px=x+Math.cos(a)*d,py=y+Math.sin(a)*d;if(tileAt(Math.floor(px/TILE),Math.floor(py/TILE))!==T_ROAD)ok=false}
+      if(ok)cand.push({x,y,a:a+(Math.random()<.5?Math.PI:0)})}}
+  cand.sort(()=>Math.random()-.5);
+  for(const c of cand){if(ramps.length>=4)break;
+    if(dist2(c.x,c.y,START.x,START.y)<380*380||ramps.some(r=>dist2(r.x,r.y,c.x,c.y)<700*700)||props.some(p=>dist2(p.x,p.y,c.x,c.y)<110*110))continue;
+    if(roads.roundabout&&Math.hypot(c.x-roads.roundabout.x,c.y-roads.roundabout.y)<roads.roundabout.r+160)continue;
+    ramps.push(c)}
 }
 /* =========================================================
    audio: everything is synthesized live with Web Audio
@@ -859,7 +901,7 @@ const input={keys:{},joy:null};
 
 function newGame(){
   genCity();
-  const c={x:START.x,y:START.y,a:-Math.PI/2,vx:0,vy:0,hp:0,r:17,turretA:0,skin:skinById(Profile.data.skin)};
+  const c={x:START.x,y:START.y,a:-Math.PI/2,vx:0,vy:0,z:0,vz:0,airT:0,rampH:0,hp:0,r:17,turretA:0,skin:skinById(Profile.data.skin)};
   G={t:0,car:c,z:[],pick:[],bul:[],rock:[],acid:[],mines:[],fires:[],puddles:[],bolts:[],rings:[],parts:[],blood:[],skids:[],
      level:1,xp:0,kills:0,coins:0,L:{},cd:{},spawnAcc:0,nextHorde:55,nextBoss:120,bossIdx:0,boss:null,pending:0,pendingChest:0,
      dmgFlash:0,dead:false,deadT:0,flow:null,flowTile:-1,flowT:0,lastSkid:null,fireDrop:0,sawA:0,banner:null,
@@ -884,6 +926,27 @@ function stats(){
 const COMBO_WINDOW=2.2;
 function comboMult(){const c=G.combo;return c>=50?5:c>=25?3:c>=10?2:1}
 function addNum(x,y,h,v,kind){if(G.nums.length>60)G.nums.shift();G.nums.push({x:x+rand(-6,6),y:y+rand(-6,6),h,v,kind:kind||'',t:0,life:.75})}
+/* ---------- ramps and jumps ---------- */
+function updateJump(c,dt){
+  if(c.z>0||c.vz>0){c.vz-=950*dt;c.z+=c.vz*dt;c.airT+=dt;if(c.z<=0){c.z=0;c.vz=0;landJump(c)}return}
+  c.rampH=0;
+  for(const r of ramps){const ca=Math.cos(r.a),sa=Math.sin(r.a);const dx=c.x-r.x,dy=c.y-r.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
+    if(Math.abs(v)>RAMP.w/2+4||u<-RAMP.len/2||u>RAMP.len/2)continue;
+    const along=c.vx*ca+c.vy*sa;if(along<=20)continue;
+    c.rampH=(u+RAMP.len/2)/RAMP.len*RAMP.h;
+    if(u>RAMP.len/2-14&&along>150){c.z=RAMP.h;c.vz=clamp(along*1.0,240,520);c.airT=0;c.rampH=0;sfx('nitro');shake(2)}
+    break}
+}
+function landJump(c){
+  const t=c.airT;c.airT=0;sfx('crash');
+  if(t<.3){shake(2);return}
+  const R=70+t*70,dmg=(25+40*t)*(.7+.3*S.ram);
+  queryZ(c.x,c.y,R,z=>{const d=Math.hypot(z.x-c.x,z.y-c.y)||1;hurt(z,z.type==='boss'?dmg*.4:dmg,(z.x-c.x)/d*480,(z.y-c.y)/d*480,'ram')});
+  G.rings.push({x:c.x,y:c.y,r:0,max:R,t:0,dur:.35,col:'#ffd34a'});for(let i=0;i<14;i++){const a=i/14*6.28;part(c.x+Math.cos(a)*20,c.y+Math.sin(a)*20,Math.cos(a)*rand(140,260),Math.sin(a)*rand(140,260),.5,'rgba(120,110,100,.7)',rand(5,9),'smoke')}
+  shake(4+t*5);sfx('boom');G.jumps=(G.jumps||0)+1;const bonus=1+Math.round(t*3);G.coins+=bonus;
+  if(G.boostT<=0&&!(G.boostCd>0))G.boost=Math.min(100,G.boost+12);
+  addNum(c.x,c.y,60,'AIR '+t.toFixed(1)+'s · +'+bonus,'tier');questAdd('jump',1);
+}
 const NITRO_CD=8; // seconds after a nitro ends before it starts charging again
 function useBoost(){if(!G||state!=='play'||G.dead||G.boost<100||G.boostT>0)return;G.boost=0;G.boostT=3.4;sfx('nitro');shake(5);banner('NITRO!',null)}
 function slowMo(sec){if(G.slowCd>0)return;G.slow=Math.max(G.slow,sec);G.slowCd=sec+3}
@@ -1016,7 +1079,7 @@ function hurt(z,dmg,kx,ky,src){
   if(z.hp<=0)killZ(z);else if(dmg>=1)sfx('hit');
 }
 function killZ(z){
-  z.dead=true;G.kills++;sfx('splat');
+  z.dead=true;G.kills++;sfx('splat');if(!G.dead)questKill(z);
   if(!G.dead){const before=comboMult();G.combo++;G.comboT=COMBO_WINDOW;G.bestCombo=Math.max(G.bestCombo,G.combo);sfx('combo',G.combo);
     if(comboMult()>before){sfx('tier');addNum(G.car.x,G.car.y,60,'×'+comboMult(),'tier')}
     if(G.boostT<=0&&!(G.boostCd>0))G.boost=Math.min(100,G.boost+(z.type==='boss'?50:1.4+Math.min(2.1,G.combo/20)));
@@ -1146,7 +1209,7 @@ function update(dt){
   if(G.slowCd>0)G.slowCd-=dt;
   S=stats();
   const c=G.car;
-  if(!G.dead)G.t+=dt;
+  if(!G.dead){G.t+=dt;if((G.t%1)<dt)questMax('survive',G.t)}
   if(G.boostCd>0)G.boostCd-=dt;
   if(G.boostT>0){G.boostT-=dt;if(G.boostT<=0)G.boostCd=NITRO_CD;const bx=Math.cos(c.a),by=Math.sin(c.a);for(let i=0;i<3;i++)part(c.x-bx*26+rand(-5,5),c.y-by*26+rand(-5,5),-bx*rand(120,220)+rand(-30,30),-by*rand(120,220)+rand(-30,30),rand(.2,.35),pick(['#ffd34a','#ff8a2a','#5cc8ff']),rand(3,5),'fire',8,rand(-10,20))}
   if(G.comboT>0){G.comboT-=dt;if(G.comboT<=0){if(G.combo>=10){const bonus=Math.floor(G.combo/5);G.coins+=bonus;banner('Combo '+G.combo+'!','+'+bonus+' coins');sfx('comboEnd')}G.combo=0}}
@@ -1162,19 +1225,22 @@ function update(dt){
   let fwd=c.vx*fx+c.vy*fy,lat=-c.vx*fy+c.vy*fx;
   const spd=Math.hypot(c.vx,c.vy);
   let want=G.boostT>0?S.maxSpeed:mag*S.maxSpeed;
+  const air=c.z>0;
+  if(air)want=fwd; // no traction in the air: keep speed, steer only a little
   if(targetA!==null){const d=angDiff(c.a,targetA);
-    const turnRate=3.4*clamp(Math.abs(fwd)/120,.45,1);
+    const turnRate=3.4*clamp(Math.abs(fwd)/120,.45,1)*(air?.25:1);
     c.a+=clamp(d,-turnRate*dt,turnRate*dt);
     if(Math.abs(d)>1.3)want*=.55}
   const prev=fwd;
   if(fwd<want)fwd=Math.min(want,fwd+S.accel*dt);else fwd=Math.max(want,fwd-(mag>0?520:380)*dt);
   fwd=Math.max(0,Math.min(fwd,S.maxSpeed));
-  const grip=targetA!==null?5.2:9;
+  const grip=air?0:targetA!==null?5.2:9;
   lat*=Math.exp(-grip*dt);
   const nfx=Math.cos(c.a),nfy=Math.sin(c.a);
   const throttle=fwd>prev+.5?1:fwd<prev-.5?-1:0;
   c.vx=nfx*fwd-nfy*lat;c.vy=nfy*fwd+nfx*lat;c.fwd=fwd;c.lat=lat;c.throttle=throttle;
   if(!G.dead){c.x+=c.vx*dt;c.y+=c.vy*dt}
+  if(!G.dead)updateJump(c,dt);
   c.nx=0;c.ny=0;
   if(resolveSolid(c,c.r)){const vn=c.vx*c.nx+c.vy*c.ny;if(vn<0){c.vx-=vn*c.nx*1.4;c.vy-=vn*c.ny*1.4;c.vx*=.85;c.vy*=.85;if(vn<-150){shake(2);sfx('crash')}}}
   // skids
@@ -1234,8 +1300,8 @@ function updateZombies(dt){
     const ci=clamp(Math.floor(z.y/HC),0,HN-1)*HN+clamp(Math.floor(z.x/HC),0,HN-1);const cell=hash[ci];
     for(let i=0;i<cell.length;i++){const o=cell[i];if(o===z||o.dead)continue;const ox=z.x-o.x,oy=z.y-o.y;const rr=z.r+o.r;const d2=ox*ox+oy*oy;
       if(d2<rr*rr&&d2>.01){const dd=Math.sqrt(d2);const p=(rr-dd)*.5;const wz=z.type==='boss'?.1:.5;z.x+=ox/dd*p*wz;z.y+=oy/dd*p*wz}}
-    // car contact
-    if(G.dead)continue;
+    // car contact (none while the car is flying over them)
+    if(G.dead||c.z>9)continue;
     const rr=z.r+c.r;
     if(d<rr){
       const nx=-dx/d,ny=-dy/d; // from car to zombie
@@ -1385,7 +1451,7 @@ function updatePickups(dt){
     if(!p.mag&&d2<mr*mr)p.mag=true;
     if(p.mag){const d=Math.sqrt(d2)||1;const s=Math.min(900,260+p.t*200);p.x+=(c.x-p.x)/d*s*dt;p.y+=(c.y-p.y)/d*s*dt}
     if(d2<(c.r+10)*(c.r+10)){p.got=true;
-      if(p.kind==='xp'){G.xp+=p.v*S.xpMul;sfx('xp');while(G.xp>=xpNeed(G.level)){G.xp-=xpNeed(G.level);G.level++;G.pending++}}
+      if(p.kind==='xp'){G.xp+=p.v*S.xpMul;sfx('xp');while(G.xp>=xpNeed(G.level)){G.xp-=xpNeed(G.level);G.level++;G.pending++;questMax('level',G.level)}}
       else if(p.kind==='coin'){G.coins+=p.v;sfx('coin')}
       else if(p.kind==='med'){c.hp=Math.min(S.maxHp,c.hp+25);sfx('level');burst(c.x,c.y,10,'#ff6b6b',140,3)}
       else if(p.kind==='chest'){G.pendingChest++;sfx('chest')}
@@ -1747,6 +1813,14 @@ function build3DCity(){
     const basin=add(new THREE.Mesh(new THREE.CylinderGeometry(TILE*1.05,TILE*1.1,10,28),lam('#6a7180')));basin.position.set(f.x,5,f.y);basin.castShadow=basin.receiveShadow=true;ink(basin,1.2);
     const water=add(new THREE.Mesh(new THREE.CylinderGeometry(TILE*.9,TILE*.9,1,28),lam('#1f5a73',{emissive:'#0d3346'})));water.position.set(f.x,10,f.y);
     const col2=add(new THREE.Mesh(new THREE.CylinderGeometry(5,7,34,10),lam('#7b8291')));col2.position.set(f.x,22,f.y);col2.castShadow=true;ink(col2,.9)}
+  // jump ramps: hazard-yellow wedges with chevrons painted on the road leading in
+  for(const r of ramps){const g=new THREE.Group();const L=RAMP.len,Hh=RAMP.h,Wd=RAMP.w;
+    const sh=new THREE.Shape();sh.moveTo(-L/2,0);sh.lineTo(L/2,0);sh.lineTo(L/2,Hh);sh.lineTo(-L/2,0);
+    const wedge=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:Wd,bevelEnabled:false}).translate(0,0,-Wd/2),lam('#f2b632'));wedge.castShadow=true;wedge.receiveShadow=true;g.add(wedge);ink(wedge,1);
+    const th=Math.atan2(Hh,L);for(const k of [-.28,0,.28]){const st=new THREE.Mesh(new THREE.BoxGeometry(7,.8,Wd*.86),lam('#1c1b1f'));st.position.set(k*L,(k+.5)*Hh+.5,0);st.rotation.z=th;g.add(st)}
+    const lip=new THREE.Mesh(new THREE.BoxGeometry(3,Hh,Wd),lam('#1c1b1f'));lip.position.set(L/2-1.5,Hh/2,0);g.add(lip);
+    for(const d of [50,85]){for(const sgn of [-1,1]){const ch=new THREE.Mesh(new THREE.BoxGeometry(20,.6,5),basic('#ffcf4a'));ch.position.set(-L/2-d,.4,sgn*8);ch.rotation.y=sgn*.6;g.add(ch)}}
+    g.position.set(r.x,0,r.y);g.rotation.y=-r.a;add(g)}
   // street props: abandoned cars, barrels, crates
   for(const p of props){
     if(p.kind==='car'){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.BoxGeometry(44,10,22),lam(p.burn?'#232326':p.col));b.position.y=6;
@@ -1955,8 +2029,9 @@ function render3D(now,dt){
   // car
   const g=carRig.g;const deadNow=G.dead&&G.deadT>.05;
   g.visible=!deadNow;wreckObj.visible=deadNow&&inRun;
-  g.position.set(c.x,0,c.y);g.rotation.y=-c.a;
-  carRig.tilt.rotation.x=clamp((c.lat||0)*.0007,-.07,.07);carRig.tilt.rotation.z=clamp(-(c.throttle||0)*.02,-.03,.03);
+  g.position.set(c.x,(c.z||0)+(c.rampH||0),c.y);g.rotation.y=-c.a;
+  carRig.tilt.rotation.x=clamp((c.lat||0)*.0007,-.07,.07);
+  carRig.tilt.rotation.z=c.z>0?clamp(c.vz*.0007,-.28,.28):c.rampH>0?Math.atan2(RAMP.h,RAMP.len):clamp(-(c.throttle||0)*.02,-.03,.03);
   const roll=((c.fwd||0)*dt)/5.2;for(const w of carRig.wheels)w.rotation.z-=roll;
   carRig.bull.visible=inRun&&G.L.ram>0;if(carRig.bull.visible)carRig.bull.scale.set(1,1+G.L.ram*.06,1);
   if(carRig.pol){const on=Math.floor(now/170)%2===0;carRig.pol.r.material.color.set(on?'#ff2a2a':'#4a0e0e');carRig.pol.b.material.color.set(on?'#0e1a4a':'#2a5aff');carRig.pol.pl.color.set(on?'#ff2a2a':'#2a5aff')}
@@ -2172,9 +2247,55 @@ function renderBoards(){
 const SCREENS=['menu','shop','boardScr','levelup','pause','over'];
 function showScreen(id){for(const s of SCREENS)$('#'+s).hidden=s!==id;$('#hud').hidden=!(state==='play'||state==='levelup'||state==='pause'||state==='dead');
   if(state!=='play'){input.joy=null;$('#joy').hidden=true}}
+/* ---------- daily challenges: three a day, same for everyone, coins when done ---------- */
+const QUESTS=[
+  {id:'saw',n:[60,110],r:[110,170],t:n=>`Kill ${n} zombies with Spinning Saws`},
+  {id:'fire',n:[60,110],r:[110,170],t:n=>`Burn ${n} zombies with the Fire Trail`},
+  {id:'zap',n:[60,110],r:[110,170],t:n=>`Zap ${n} zombies with the Tesla Coil`},
+  {id:'shot',n:[150,260],r:[90,140],t:n=>`Shoot down ${n} zombies with the Auto Turret`},
+  {id:'ram',n:[80,150],r:[90,150],t:n=>`Run over ${n} zombies`},
+  {id:'blast',n:[60,120],r:[100,160],t:n=>`Blow up ${n} zombies with explosions`},
+  {id:'jump',n:[6,12],r:[90,150],t:n=>`Jump off ${n} ramps`},
+  {id:'boss',n:[2,4],r:[120,190],t:n=>`Defeat ${n} mini-bosses`},
+  {id:'kills',n:[400,800],r:[90,150],t:n=>`Kill ${n} zombies`},
+  {id:'survive',n:[4,7],r:[120,200],one:true,t:n=>`Survive ${n} minutes in one drive`,scale:60},
+  {id:'level',n:[12,18],r:[100,170],one:true,t:n=>`Reach level ${n} in one drive`},
+  {id:'combo',n:[40,90],r:[100,170],one:true,t:n=>`Hit a ${n}-kill combo`},
+];
+const SRC_Q={saw:'saw',fire:'fire',zap:'zap',shot:'shot',ram:'ram',blast:'blast'};
+const dayKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function ensureDaily(){
+  const key=dayKey();const D=Profile.data.daily;if(D&&D.day===key&&Array.isArray(D.list))return D;
+  let h=2166136261;for(const ch of key){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}const rnd=mulberry32(h>>>0);
+  const pool=QUESTS.slice();const list=[];
+  while(list.length<3){const q=pool.splice(Math.floor(rnd()*pool.length),1)[0];const f=rnd();
+    const n=Math.round(lerp(q.n[0],q.n[1],f)/(q.n[1]>=100?10:1))*(q.n[1]>=100?10:1);
+    list.push({id:q.id,n,goal:n*(q.scale||1),r:Math.round(lerp(q.r[0],q.r[1],f)/10)*10,p:0,done:false})}
+  Profile.data.daily={day:key,list};LS.set('ld.profile',Profile.data);return Profile.data.daily;
+}
+function questBump(id,v,isMax){
+  if(!G||attract)return;const D=ensureDaily();
+  for(const q of D.list){if(q.id!==id||q.done)continue;q.p=isMax?Math.max(q.p,v):q.p+v;
+    if(q.p>=q.goal){q.p=q.goal;q.done=true;Profile.data.coins+=q.r;Profile.save();
+      banner('Daily challenge done!',QUESTS.find(x=>x.id===id).t(q.n)+' · +'+q.r+' coins');sfx('chest');V.flash=Math.max(V.flash,1)}}
+}
+const questAdd=(id,n)=>questBump(id,n,false),questMax=(id,v)=>questBump(id,v,true);
+function questKill(z){questAdd('kills',1);const k=SRC_Q[z.src];if(k)questAdd(k,1);if(z.type==='boss')questAdd('boss',1);questMax('combo',G.combo)}
+function renderDaily(el,compact){
+  if(!el)return;const D=ensureDaily();el.innerHTML='';
+  for(const q of D.list){const Q=QUESTS.find(x=>x.id===q.id);if(!Q)continue;const row=document.createElement('div');row.className='q'+(q.done?' done':'');
+    const shown=Q.scale?Math.floor(q.p/Q.scale*10)/10:Math.floor(q.p);
+    const t=document.createElement('span');t.className='qt';t.textContent=(q.done?'✓ ':'')+Q.t(q.n);
+    const rw=document.createElement('b');rw.className='qr';rw.textContent='+'+q.r;
+    const bar=document.createElement('i');bar.className='qb';const f=document.createElement('i');f.style.width=(100*Math.min(1,q.p/q.goal)).toFixed(1)+'%';bar.append(f);
+    const pr=document.createElement('small');pr.className='qp';pr.textContent=q.done?'Done':(shown+' / '+q.n+(Q.scale?' min':''));
+    row.append(t,rw,bar,pr);el.append(row)}
+  const sm=$('#dailySum');if(sm){const dn=D.list.filter(q=>q.done).length;sm.textContent=dn+' / '+D.list.length+' done'}
+  const left=$('#dailyReset');if(left){const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const mins=Math.max(1,Math.round((m-n)/60000));left.textContent='New challenges in '+(mins>=60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+'m')}
+}
 /* ---------- save & continue an unfinished drive ---------- */
 const RUN_KEY='ld.run',RUN_V=1;
-const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh'];
+const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh','jumps'];
 function clearRun(){try{localStorage.removeItem(RUN_KEY)}catch(e){}}
 function saveRun(){
   if(!G||attract||G.dead||!['play','pause','levelup'].includes(state))return;
@@ -2186,7 +2307,7 @@ function saveRun(){
   for(const k of RUN_KEEP)d.g[k]=G[k];
   // a choice screen that is open has already used up its pending pick; give it back so it reopens
   d.g.pending=G.pending+(state==='levelup'&&!G.choiceChest?1:0);d.g.pendingChest=G.pendingChest+(state==='levelup'&&G.choiceChest?1:0);
-  LS.set(RUN_KEY,d);
+  LS.set(RUN_KEY,d);LS.set('ld.profile',Profile.data);
 }
 function savedRun(){const d=LS.get(RUN_KEY,null);return d&&d.v===RUN_V&&d.g&&d.car&&Array.isArray(d.z)?d:null}
 function continueRun(){
@@ -2202,8 +2323,10 @@ function continueRun(){
   $('#moveHint').hidden=!input.touch;
 }
 setInterval(saveRun,2000);
+if(window.innerWidth>900)$('#dailyBox').open=true;
 window.addEventListener('pagehide',saveRun);
 function refreshMenu(){
+  renderDaily($('#dailyList'));
   const sr=savedRun();$('#contBtn').hidden=!sr;$('#playBtn').firstChild.textContent=sr?'New drive ':'Drive! ';
   if(sr){const th=THEMES.find(t=>t.id===sr.theme);$('#contInfo').textContent=fmtTime(sr.g.t)+' · Lv '+sr.g.level+(th?' · '+th.name:'')}
   const d=Profile.data;$('#mBest').textContent=d.best?fmtTime(d.best):'--:--';$('#mCoins').textContent=d.coins;$('#mCoinsBadge').textContent=d.coins;$('#mSkin').textContent='Car: '+skinById(d.skin).name;
@@ -2294,7 +2417,7 @@ async function gameOver(){
   const run={time:G.t,kills:G.kills,level:G.level};
   const bonus=Math.floor(G.t/10);const earned=G.coins+bonus;
   const d=Profile.data;d.coins+=earned;const newBest=G.t>(d.best||0);if(newBest)d.best=Math.round(G.t*10)/10;Profile.save();
-  $('#oTime').textContent=fmtTime(G.t);$('#oKills').textContent=G.kills;$('#oLevel').textContent=G.level;$('#oCombo').textContent=G.bestCombo;$('#oCoins').textContent='+'+earned;
+  $('#oTime').textContent=fmtTime(G.t);$('#oKills').textContent=G.kills;$('#oLevel').textContent=G.level;$('#oCombo').textContent=G.bestCombo;$('#oCoins').textContent='+'+earned;renderDaily($('#overDaily'));
   const note=$('#oNote');note.className='save-note';note.textContent=(newBest?'New personal best! ':'')+'Saving…';
   const r=await Net.submit(run);note.textContent=(newBest?'New personal best. ':'')+r.msg;if(r.good||newBest)note.classList.add('good');
   refreshMenu();
@@ -2302,7 +2425,7 @@ async function gameOver(){
 }
 function toMenu(){saveRun();state='menu';G=null;attract=null;Shop.preview=null;showScreen('menu');refreshMenu();renderBoards()}
 function pauseGame(){if(state!=='play')return;state='pause';saveRun();
-  const owned=EVOS.filter(e=>G.E[e.id]).map(e=>'★ '+e.name).concat(UPG.filter(u=>G.L[u.id]>0).map(u=>u.name+' '+G.L[u.id])).join(' · ');$('#pauseBuild').textContent=owned?'Your build: '+owned:'No upgrades yet.';showScreen('pause')}
+  const owned=EVOS.filter(e=>G.E[e.id]).map(e=>'★ '+e.name).concat(UPG.filter(u=>G.L[u.id]>0).map(u=>u.name+' '+G.L[u.id])).join(' · ');$('#pauseBuild').textContent=owned?'Your build: '+owned:'No upgrades yet.';renderDaily($('#pauseDaily'));showScreen('pause')}
 function resumeGame(){if(state!=='pause')return;state='play';showScreen(null)}
 
 $('#playBtn').onclick=startRun;$('#againBtn').onclick=startRun;
