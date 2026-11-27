@@ -353,6 +353,32 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 #adScr.native .adbox,#adScr.native #adSkip,#adScr.native #adClaim{display:none!important}
 #adScr.native .panel::before{content:'Loading ad…';font:400 24px var(--display);color:var(--paper);text-align:center}
 .adcount{font:400 22px var(--display);color:var(--paper);font-variant-numeric:tabular-nums}
+
+/* in-run daily challenges: a small button that expands into a panel */
+#dq{position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px));pointer-events:auto;
+  background:rgba(13,16,24,.9);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);border-radius:10px;transform-origin:top right}
+#dq .dqhead{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+#dq .dqtitle{display:none;font:400 15px var(--display);color:var(--sodium);padding-left:12px}
+#dqBtn{display:flex;align-items:center;gap:6px;height:38px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--paper);font:700 15px var(--body);font-variant-numeric:tabular-nums}
+#dqBtn svg{width:20px;height:20px}
+#dqBtn .dqclose{display:none}
+#dq #dqList{display:none}
+#dq.open{width:min(300px,calc(100vw - 28px));animation:dqgrow .18s ease-out}
+#dq.open .dqtitle{display:block;flex:1}
+#dq.open .dqopen{display:none}#dq.open .dqclose{display:block}
+#dq.open #dqList{display:flex;padding:2px 12px 12px}
+#dq.alldone #dqBtn{color:#8fd18f}
+#dq.pop{animation:dqpop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes dqgrow{from{transform:scale(.4);opacity:.2}to{transform:scale(1);opacity:1}}
+@keyframes dqpop{0%{transform:scale(1)}30%{transform:scale(1.25);border-color:var(--sodium)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){#dq.open,#dq.pop{animation:none}}
+@media (max-width:640px){
+  .hud-top>.hud-group:first-child{flex-direction:column;align-items:flex-start;flex-wrap:nowrap}
+  .hud-top>.hud-group:last-child{flex-wrap:nowrap}
+  #dq.open{width:calc(100vw - 150px)}
+  #dq .dqtitle{font-size:13px;padding-left:10px}
+  #dq .q .qt{font-size:12px}
+}
 /* touch layout: smaller gauges */
 .touch .hud-bottom{left:max(16px,env(safe-area-inset-left,0px));transform:none;width:calc(100% - 160px)}
 .touch .speedo{width:58px;height:58px}
@@ -380,6 +406,17 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
         <div class="chip coin"><small>Coins</small><span id="hCoins">0</span></div>
         <button id="pauseBtn" aria-label="Pause">II</button>
       </div>
+    </div>
+    <div id="dq" aria-label="Daily challenges">
+      <div class="dqhead">
+        <span class="dqtitle">Daily challenges</span>
+        <button id="dqBtn" aria-expanded="false" aria-controls="dqList" aria-label="Show daily challenges">
+          <svg class="dqopen" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2h6v2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3zm0 4H6v14h12V6h-3v1H9zm-.3 6.3L10.5 14l4.8-4.8 1.4 1.4-6.2 6.2-3.2-3.2z"/></svg>
+          <span class="dqopen" id="dqCount">0/3</span>
+          <svg class="dqclose" viewBox="0 0 24 24" fill="currentColor"><path d="M5 11h14v3H5z"/></svg>
+        </button>
+      </div>
+      <div id="dqList" class="qlist dark"></div>
     </div>
     <div id="bossbar" hidden><div class="nm" id="bossName"></div><div class="bar"><div id="bossfill"></div></div></div>
     <div class="hud-bottom">
@@ -2437,6 +2474,9 @@ function updateHud(){
   set('#clock',fmtTime(G.t));set('#hLevel',G.level);set('#hKills',G.kills);set('#hCoins',G.coins);
   set('#hptext',Math.ceil(c.hp)+' / '+Math.round(s.maxHp));
   $('#hpfill').style.transform=`scaleX(${clamp(c.hp/s.maxHp,0,1)})`;
+  {const D=ensureDaily(),dn=D.list.filter(q=>q.done).length,dq=$('#dq');
+   if(lastHud.dqn!==dn){if(lastHud.dqn!==undefined&&dn>lastHud.dqn){dq.classList.remove('pop');void dq.offsetWidth;dq.classList.add('pop')}lastHud.dqn=dn;$('#dqCount').textContent=dn+'/'+D.list.length;dq.classList.toggle('alldone',dn===D.list.length)}
+   if(dq.classList.contains('open')){const now=performance.now();if(!(lastHud.dqT>now-500)){lastHud.dqT=now;renderDaily($('#dqList'))}}}
   {const xf=(100*clamp(G.xp/xpNeed(G.level),0,1)).toFixed(1);if(lastHud.xr!==xf){lastHud.xr=xf;$('#lvRing').setAttribute('stroke-dasharray',xf+' 100')}
    if(state==='play'&&lastHud.lvp!==undefined&&G.level>lastHud.lvp){const bd=$('#lvBadge');bd.classList.remove('pop');void bd.offsetWidth;bd.classList.add('pop')}if(state==='play'||lastHud.lvp===undefined)lastHud.lvp=G.level}
   const kmh=Math.round(Math.abs(c.fwd||0)*.4);set('#spd',kmh);
@@ -2548,7 +2588,9 @@ $('#playBtn').onclick=startRun;$('#againBtn').onclick=startRun;
 $('#shopBtn').onclick=()=>{Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#overShop').onclick=()=>{state='menu';G=null;Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
-$('#overMenu').onclick=toMenu;$('#revWatch').onclick=watchRevive;$('#revNo').onclick=declineRevive;$('#pauseBtn').onclick=pauseGame;$('#contBtn').onclick=continueRun;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
+$('#overMenu').onclick=toMenu;
+$('#dqBtn').onclick=()=>{const dq=$('#dq');const open=!dq.classList.contains('open');dq.classList.toggle('open',open);dq.classList.remove('pop');
+  $('#dqBtn').setAttribute('aria-expanded',open);$('#dqBtn').setAttribute('aria-label',open?'Hide daily challenges':'Show daily challenges');if(open){lastHud.dqT=0;renderDaily($('#dqList'))}};$('#revWatch').onclick=watchRevive;$('#revNo').onclick=declineRevive;$('#pauseBtn').onclick=pauseGame;$('#contBtn').onclick=continueRun;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
 const muteLabel=()=>{$('#engineToggle').textContent='Engine sound: '+(engineOn?'on':'off');$('#muteToggle').textContent='Sound: '+(muted?'off':'on');$('#musicToggle').textContent='Music: '+(musicOn?'on':'off');const hm=$('#homeMusic');hm.textContent=musicOn?'♪ Music on':'♪ Music off';hm.setAttribute('aria-pressed',musicOn)};muteLabel();
 $('#muteToggle').onclick=()=>{audioInit();setMuted(!muted);muteLabel()};
 $('#engineToggle').onclick=()=>{audioInit();setEngine(!engineOn);muteLabel()};
