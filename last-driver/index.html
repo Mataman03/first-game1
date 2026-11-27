@@ -1112,9 +1112,17 @@ function updateJump(c,dt){
   let gvz=(gh-(c.ha||0))/Math.max(dt,1e-3);if(Math.abs(gvz)>700)gvz=0; // teleports (start, revive, continue)
   if(c.gvz>60&&gvz<c.gvz-950*dt*1.3&&Math.hypot(c.vx,c.vy)>150){c.air=true;c.vz=c.gvz;c.airT=0;c.ha+=c.vz*dt;c.z=c.ha-gh;c.rampH=0;return}
   c.ha=gh;c.gvz=gvz;c.z=0;c.rampH=0;
-  for(const r of ramps){const ca=Math.cos(r.a),sa=Math.sin(r.a);const dx=c.x-r.x,dy=c.y-r.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
-    if(Math.abs(v)>RAMP.w/2+4||u<-RAMP.len/2||u>RAMP.len/2)continue;
-    const along=c.vx*ca+c.vy*sa;if(along<=20)continue;
+  for(let ri=0;ri<ramps.length;ri++){const r=ramps[ri];const ca=Math.cos(r.a),sa=Math.sin(r.a);const dx=c.x-r.x,dy=c.y-r.y;const u=dx*ca+dy*sa,v=-dx*sa+dy*ca;
+    // the ramp is a solid wedge: you can only get on where it is low (the front edge, or the low end of the sides)
+    const m=c.r*.55,L2=RAMP.len/2,W2=RAMP.w/2;
+    if(Math.abs(v)<W2+m&&u>-L2-m&&u<L2+m){
+      if(c.rampId!==ri){const hAt=clamp((u+L2)/RAMP.len,0,1)*RAMP.h;
+        if(hAt<5)c.rampId=ri;
+        else{const pb=L2+m-u,pl=W2+m-v,pr=W2+m+v;let nu=0,nv=0,pen;if(pb<=pl&&pb<=pr){nu=1;pen=pb}else if(pl<=pr){nv=1;pen=pl}else{nv=-1;pen=pr}
+          const nx=nu*ca-nv*sa,ny=nu*sa+nv*ca;c.x+=nx*pen;c.y+=ny*pen;const vn=c.vx*nx+c.vy*ny;
+          if(vn<0){c.vx-=vn*nx*1.5;c.vy-=vn*ny*1.5;c.vx*=.8;c.vy*=.8;if(vn<-120){sfx('crash');shake(3)}}continue}}
+    }else{if(c.rampId===ri)c.rampId=null;continue}
+    const along=c.vx*ca+c.vy*sa;if(along<=20){c.rampH=clamp((u+L2)/RAMP.len,0,1)*RAMP.h;break}
     c.rampH=(u+RAMP.len/2)/RAMP.len*RAMP.h;
     if(u>RAMP.len/2-14&&along>150){c.air=true;c.ha=gh+RAMP.h;c.z=RAMP.h;c.vz=clamp(along*1.0,240,520);c.airT=0;c.rampH=0;sfx('nitro');shake(2)}
     break}
