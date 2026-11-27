@@ -1,0 +1,12 @@
+{
+  "_readme": "AdMob IDs. These are Google's official TEST ids. When your AdMob account is ready, replace them with your own and set testing to false.",
+  "testing": true,
+  "android": {
+    "appId": "ca-app-pub-3940256099942544~3347511713",
+    "rewarded": "ca-app-pub-3940256099942544/5224354917"
+  },
+  "ios": {
+    "appId": "ca-app-pub-3940256099942544~1458002511",
+    "rewarded": "ca-app-pub-3940256099942544/1712485313"
+  }
+}

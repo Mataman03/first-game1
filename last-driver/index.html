@@ -350,6 +350,8 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .adcard b{font:400 30px var(--display);color:var(--sodium)}
 .adcard span{font-size:13px;color:var(--muted)}
 .adfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+#adScr.native .adbox,#adScr.native #adSkip,#adScr.native #adClaim{display:none!important}
+#adScr.native .panel::before{content:'Loading ad…';font:400 24px var(--display);color:var(--paper);text-align:center}
 .adcount{font:400 22px var(--display);color:var(--paper);font-variant-numeric:tabular-nums}
 /* touch layout: smaller gauges */
 .touch .hud-bottom{left:max(16px,env(safe-area-inset-left,0px));transform:none;width:calc(100% - 160px)}
@@ -2269,7 +2271,7 @@ const Net={db:null,user:null,uid:null,canWrite:null,board:[],status:'loading',ti
 
 function boardHTML(limit){
   const st=Net.status;
-  if(st==='offline')return '<div class="board-empty">The global leaderboard works when the game is opened inside Claude.<br>Your personal best is saved in this browser.</div>';
+  if(st==='offline')return '<div class="board-empty">The global leaderboard is not available right now.<br>Your personal best is saved on this device.</div>';
   if(st==='error')return '<div class="board-empty">Could not load the leaderboard right now.</div>';
   if(st==='loading')return '<div class="board-empty">Loading the leaderboard…</div>';
   if(st==='slow'&&!Net.board.length)return '<div class="board-empty">The leaderboard has not loaded yet. You can play in the meantime.</div>';
@@ -2458,8 +2460,44 @@ function startRun(){
 /* ---------- second chance: watch an ad, come back with 25% health (once per drive) ---------- */
 // Ads.showRewarded is the one place to plug in a real ad network's rewarded-video call.
 // It must call done(true) only when the viewer watched to the end, and done(false) if it was skipped or failed.
+/* native app (Capacitor): real AdMob rewarded ads, Android back button, full screen. The web version keeps the placeholder. */
+const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+const nativePlugin=n=>{try{return window.Capacitor.registerPlugin?window.Capacitor.registerPlugin(n):window.Capacitor.Plugins[n]}catch(e){return null}};
+const AD_CFG=window.LD_ADS||{}; // set by the app build: {android:'ca-app-pub-…/…', ios:'ca-app-pub-…/…', testing:true}
+const NativeAds={
+  admob:null,ready:false,loading:false,
+  opts(){const ios=window.Capacitor.getPlatform()==='ios';return{adId:(ios?AD_CFG.ios:AD_CFG.android)||'',isTesting:!!AD_CFG.testing,immersiveMode:true}},
+  async init(){
+    this.admob=nativePlugin('AdMob');const A=this.admob;if(!A)return;
+    try{if(window.Capacitor.getPlatform()==='ios'){const t=await A.trackingAuthorizationStatus();if(t.status==='notDetermined')await A.requestTrackingAuthorization()}}catch(e){}
+    try{const ci=await A.requestConsentInfo();if(ci.isConsentFormAvailable&&ci.status==='REQUIRED')await A.showConsentForm()}catch(e){}
+    try{await A.initialize({initializeForTesting:!!AD_CFG.testing});this.preload()}catch(e){}
+  },
+  preload(){const A=this.admob;if(!A||this.ready||this.loading)return;this.loading=true;
+    A.prepareRewardVideoAd(this.opts()).then(()=>{this.ready=true}).catch(()=>{}).finally(()=>{this.loading=false})},
+  async show(done){
+    const A=this.admob;state='ad';showScreen('adScr');$('#adScr').classList.add('native');if(AC)AC.suspend().catch(()=>{});
+    let rewarded=false,finished=false;const hs=[];
+    const fin=ok=>{if(finished)return;finished=true;for(const h of hs)h.remove();$('#adScr').classList.remove('native');if(AC&&!muted)AC.resume().catch(()=>{});this.ready=false;this.preload();done(ok)};
+    try{
+      hs.push(await A.addListener('onRewardedVideoAdReward',()=>{rewarded=true}));
+      hs.push(await A.addListener('onRewardedVideoAdDismissed',()=>setTimeout(()=>fin(rewarded),250)));
+      hs.push(await A.addListener('onRewardedVideoAdFailedToShow',()=>fin(true)));
+      if(!this.ready)await A.prepareRewardVideoAd(this.opts());
+      await A.showRewardVideoAd();
+    }catch(e){fin(true)} // no ad to show (offline / no fill): don't punish the player, revive anyway
+  }
+};
+if(NATIVE){
+  NativeAds.init();
+  try{const SB=nativePlugin('StatusBar');SB&&SB.hide().catch(()=>{})}catch(e){}
+  try{const App=nativePlugin('App');App&&App.addListener('backButton',()=>{
+    if(state==='play')pauseGame();else if(state==='pause')resumeGame();else if(state==='revive')declineRevive();
+    else if(state==='over')toMenu();else if(!$('#shop').hidden||!$('#boardScr').hidden)toMenu();else if(state==='menu')App.exitApp()})}catch(e){}
+}
 const Ads={
   showRewarded(done){
+    if(NATIVE&&NativeAds.admob)return NativeAds.show(done);
     const AD_SECS=5;let left=AD_SECS;state='ad';showScreen('adScr');
     const cnt=$('#adCount'),bar=$('#adBar'),claim=$('#adClaim'),skip=$('#adSkip');claim.hidden=true;skip.hidden=false;cnt.textContent=left;bar.style.width='0%';
     const t0=performance.now();
