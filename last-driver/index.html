@@ -240,7 +240,9 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .chip{background:rgba(13,16,24,.78);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;display:flex;gap:6px;align-items:center}
 .chip small{font-weight:400;color:var(--muted);font-size:12px}
 #clock{font-family:var(--display);font-size:30px;color:var(--paper);background:rgba(13,16,24,.78);border:2px solid var(--sodium);border-radius:6px;padding:2px 14px;font-variant-numeric:tabular-nums}
-#pauseBtn{pointer-events:auto;width:42px;height:38px;border-radius:6px;border:1px solid var(--line);background:rgba(13,16,24,.78);color:var(--paper);font-size:16px;display:grid;place-items:center}
+#pauseBtn{pointer-events:auto;width:58px;height:54px;border-radius:12px;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);background:rgba(13,16,24,.9);color:var(--paper);display:grid;place-items:center;padding:0}
+#pauseBtn svg{width:26px;height:26px}
+#pauseBtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
 .hud-bottom{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(440px,72vw);display:flex;gap:12px;align-items:center;direction:ltr}
 .speedo{flex:0 0 auto;width:74px;height:74px;position:relative;display:grid;place-items:center}
 .speedo svg{position:absolute;inset:0}
@@ -355,7 +357,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .adcount{font:400 22px var(--display);color:var(--paper);font-variant-numeric:tabular-nums}
 
 /* in-run daily challenges: a small button that expands into a panel */
-#dq{position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px));pointer-events:auto;
+#dq{position:absolute;top:calc(80px + env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px));pointer-events:auto;
   background:rgba(13,16,24,.9);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);border-radius:10px;transform-origin:top right}
 #dq .dqhead{display:flex;align-items:center;justify-content:flex-end;gap:10px}
 #dq .dqtitle{display:none;font:400 15px var(--display);color:var(--sodium);padding-left:12px}
@@ -404,7 +406,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
       <div class="hud-group">
         <div class="chip"><small>Kills</small><span id="hKills">0</span></div>
         <div class="chip coin"><small>Coins</small><span id="hCoins">0</span></div>
-        <button id="pauseBtn" aria-label="Pause">II</button>
+        <button id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg></button>
       </div>
     </div>
     <div id="dq" aria-label="Daily challenges">
