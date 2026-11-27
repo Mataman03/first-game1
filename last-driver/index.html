@@ -323,6 +323,31 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 @media (prefers-reduced-motion:reduce){#lvBadge.pop .lvcore{animation:none}}
 
 /* daily challenges */
+.mapcard{width:100%;box-sizing:border-box;padding:10px 12px;transform:rotate(-.5deg)}
+.mapcard .mrow{display:flex;align-items:center;gap:8px}
+.mapcard .marr{flex:none;width:40px;height:44px;border:3px solid var(--ink);border-radius:8px;background:var(--sodium);color:var(--ink);font:700 28px/1 var(--display);cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.mapcard .marr:disabled{opacity:.3;cursor:default;box-shadow:none}
+.mapcard .mname{flex:1;min-width:0;text-align:center;display:flex;flex-direction:column}
+.mapcard .mname small{font:700 11px var(--body);color:#5a5446;text-transform:uppercase;letter-spacing:.08em}
+.mapcard .mname b{font:400 22px/1.1 var(--display);color:var(--ink)}
+.mapcard .mname>span{font-size:12px;color:#5a5446;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mapcard.locked .mname b{color:#6b6458}
+#mapInfo{margin-top:8px}
+.mapcard .medals{display:flex;justify-content:center;gap:12px}
+.medal{display:flex;flex-direction:column;align-items:center;font:700 11px var(--body);color:#5a5446}
+.medal svg{width:30px;height:30px}.medal circle{fill:#cfc8b6;stroke:var(--ink);stroke-width:1.6}.medal path{opacity:.35}
+.medal.on path{opacity:1}.medal.m0.on circle{fill:#c98a4a}.medal.m1.on circle{fill:#d9dee4}.medal.m2.on circle{fill:#ffcf3a}.medal.on{color:var(--ink)}
+.mapcard .mbest{text-align:center;font-size:12px;color:#5a5446;margin-top:4px}.mapcard .mbest b{color:var(--ink)}
+.mapcard .goal{font-size:13px;color:var(--ink);font-weight:600;line-height:1.3}
+.mapcard .goal span{display:inline-block;background:var(--ink);color:var(--sodium);font:700 10px var(--body);text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:4px;margin-right:6px;vertical-align:1px}
+.mapcard .gbar{height:8px;border:2px solid var(--ink);border-radius:5px;background:#e6dfcf;margin-top:7px;overflow:hidden}.mapcard .gbar i{display:block;height:100%;background:var(--sodium)}
+.mapcard .gtxt{display:block;font-size:11px;color:#5a5446;margin-top:3px}
+.mapcard .buy{display:block;width:100%;margin-top:8px;padding:7px;border:3px solid var(--ink);border-radius:8px;background:#ffd34a;color:var(--ink);font:700 13px var(--body);cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.mapcard .buy:disabled{background:#d8d1c0;color:#7a7466;cursor:default;box-shadow:none}
+.drive.lockd,.drive:disabled{filter:grayscale(1);opacity:.6;cursor:not-allowed}
+.btabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.btabs button{flex:1 1 auto;padding:7px 10px;border:2px solid var(--ink);border-radius:7px;background:#e6dfcf;color:var(--ink);font:700 13px var(--body);cursor:pointer}
+.btabs button[aria-selected="true"]{background:var(--sodium)}
 .daily{width:100%;box-sizing:border-box;padding:12px 14px;transform:rotate(.6deg)}
 .daily summary{list-style:none;cursor:pointer}.daily summary::-webkit-details-marker{display:none}
 .daily summary h3::after{content:"▾";font-size:14px;margin-left:auto}.daily[open] summary h3::after{content:"▴"}
@@ -451,6 +476,12 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
           <div class="stk pill"><span>Your best</span><b id="mBest">--:--</b></div>
           <div class="stk pill coins"><span>Coins</span><b id="mCoins">0</b></div>
         </div>
+        <div class="stk mapcard" id="mapCard">
+          <div class="mrow"><button class="marr" id="mapPrev" aria-label="Previous map">&#8249;</button>
+            <div class="mname"><small id="mapIdx">Map 1 of 4</small><b><span id="mapLock" hidden>&#128274; </span><span id="mapName">Downtown</span></b><span id="mapSub"></span></div>
+            <button class="marr" id="mapNext" aria-label="Next map">&#8250;</button></div>
+          <div id="mapInfo"></div>
+        </div>
         <details class="stk daily" id="dailyBox"><summary><h3>Daily challenges <small id="dailySum"></small></h3></summary><div id="dailyList" class="qlist"></div><small class="dreset" id="dailyReset"></small></details>
         <button class="stk music-btn" id="homeMusic" aria-pressed="true">♪ Music on</button>
         <div class="stk top5">
@@ -505,6 +536,7 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   <section class="screen" id="boardScr" hidden>
     <div class="panel">
       <div class="head"><h2>Leaderboard</h2><span class="sign">All players · survival time</span></div>
+      <div class="btabs" id="boardTabs" role="tablist"><button data-k="all" role="tab">All maps</button><button data-k="downtown" role="tab">Downtown</button><button data-k="suburbs" role="tab">Suburbs</button><button data-k="industrial" role="tab">Docks</button><button data-k="oldtown" role="tab">Old Town</button></div>
       <div class="plate"><div id="fullBoard"></div></div>
       <button class="btn" id="boardBack">Back</button>
     </div>
@@ -648,7 +680,8 @@ const THEMES=[
    roofs:['#62493f','#5a4e48','#5b5446','#4f4a3c','#6a4a3a'],facades:['#9c8a7c','#a39a86','#998c84','#a0917a','#b0a088'],win:[0,1],light:'#ffb84a',fog:'#100d0c',sky:['#a08870','#2a2018']},
 ];
 let THEME=THEMES[0],KEEP_THEME=false;
-function pickTheme(){const last=LS.get('ld.lastTheme',null);const opts=THEMES.filter(t=>t.id!==last);THEME=pick(opts);LS.set('ld.lastTheme',THEME.id);return THEME}
+let MAP_VIEW=null; // the map being browsed on the home screen (may still be locked)
+function pickTheme(){let id='downtown';try{id=MAP_VIEW||Profile.data.map||id}catch(e){}THEME=THEMES.find(t=>t.id===id)||THEMES[0];return THEME}
 function makeRoads(){
   const W=WORLD,e=TILE,R=[];
   R.push([[e,e],[W-e,e],[W-e,W-e],[e,W-e],[e,e]]); // ring road inside the barricades
@@ -1083,7 +1116,7 @@ function newGame(){
   G={t:0,car:c,z:[],pick:[],bul:[],rock:[],acid:[],mines:[],fires:[],puddles:[],bolts:[],rings:[],parts:[],blood:[],skids:[],
      level:1,xp:0,kills:0,coins:0,L:{},cd:{},spawnAcc:0,nextHorde:55,nextBoss:120,bossIdx:0,boss:null,pending:0,pendingChest:0,
      dmgFlash:0,dead:false,deadT:0,flow:null,flowTile:-1,flowT:0,lastSkid:null,fireDrop:0,sawA:0,banner:null,
-     combo:0,comboT:0,bestCombo:0,boost:0,boostT:0,corpses:[],deaths:[],gibs:[],nums:[],hitstop:0,slow:0,slowCd:0,recent:[],E:{},bh:null};
+     combo:0,comboT:0,bestCombo:0,boost:0,boostT:0,corpses:[],deaths:[],gibs:[],nums:[],hitstop:0,slow:0,slowCd:0,recent:[],E:{},bh:null,map:THEME.id,bossKills:0,notes:[]};
   for(const u of UPG)G.L[u.id]=0;
   c.hp=c.skin.hp;
   G.L.turret=1; // starter weapon
@@ -1289,7 +1322,7 @@ function killZ(z){
   if(z.type==='boss'){
     for(let i=0;i<14;i++)dropPick('coin',z.x,z.y,3,true);
     for(let i=0;i<10;i++)dropPick('xp',z.x,z.y,5,true);
-    dropPick('chest',z.x,z.y,1,false);G.boss=null;G.slowCd=0;slowMo(1.3);G.hitstop=.12;banner(z.name+' down','A supply crate dropped');explode(z.x,z.y,90,0,0,'#ff7a5a');
+    dropPick('chest',z.x,z.y,1,false);G.boss=null;G.bossKills=(G.bossKills||0)+1;G.slowCd=0;slowMo(1.3);G.hitstop=.12;banner(z.name+' down','A supply crate dropped');explode(z.x,z.y,90,0,0,'#ff7a5a');
   }else{
     const mul=comboMult();dropPick('xp',z.x,z.y,xp*mul,false);
     if(Math.random()<S.coin*(z.type==='brute'?4:1)*(mul>1?1.5:1))dropPick('coin',z.x,z.y,(z.type==='brute'?3:1)*mul,false);
@@ -2478,8 +2511,12 @@ const Profile={
 };
 if(!Profile.data.name)Profile.data.name='DRIVER '+randi(100,999);
 if(!Profile.data.owned.includes('sedan'))Profile.data.owned.push('sedan');
+/* map progression: unlocked maps, per-map records ({t,boss,level}) and medals (0-3) */
+{const d=Profile.data;if(!Array.isArray(d.mapU)){d.mapU=['downtown'];if((d.best||0)>=240)d.mapU.push('suburbs')}
+ if(!d.mapU.includes('downtown'))d.mapU.unshift('downtown');d.mapRec=d.mapRec||{};d.medals=d.medals||{};if(!d.mapU.includes(d.map))d.map='downtown'}
 
-const Net={db:null,user:null,uid:null,canWrite:null,board:[],status:'loading',timer:null,saving:Promise.resolve(),
+const BOARD_KEYS=['all','downtown','suburbs','industrial','oldtown'];const bField=k=>k==='all'?'time':'t_'+k;
+const Net={db:null,user:null,uid:null,canWrite:null,board:[],boards:{},status:'loading',timer:null,saving:Promise.resolve(),
   async init(){
     if(!window.claude||!window.claude.use){this.status='offline';renderBoards();return}
     this.timer=setTimeout(()=>{if(this.status==='loading'){this.status='slow';renderBoards()}},10000);
@@ -2489,52 +2526,65 @@ const Net={db:null,user:null,uid:null,canWrite:null,board:[],status:'loading',ti
     if(user){try{this.uid=await user.id()}catch(e){}try{this.canWrite=await user.can('data.write')}catch(e){this.canWrite=null}}
     if(!db){clearTimeout(this.timer);this.status='offline';renderBoards();return}
     try{
-      db.collection('scores').orderBy('time','desc').limit(50).onSnapshot(snap=>{
-        if(!snap.metadata.fromCache)clearTimeout(this.timer);
-        this.board=snap.docs.map(d=>Object.assign({id:d.id},d.data()));this.status='ok';renderBoards();
-      },err=>{clearTimeout(this.timer);this.status='error';renderBoards()});
+      for(const k of BOARD_KEYS){const f=bField(k);
+        db.collection('scores').orderBy(f,'desc').limit(50).onSnapshot(snap=>{
+          if(!snap.metadata.fromCache)clearTimeout(this.timer);
+          this.boards[k]=snap.docs.map(d=>Object.assign({id:d.id},d.data())).filter(r=>(+r[f]||0)>0);if(k==='all')this.board=this.boards.all;
+          this.status='ok';renderBoards();
+        },err=>{if(k==='all'){clearTimeout(this.timer);this.status='error'}else this.boards[k]=null;renderBoards()})}
     }catch(e){this.status='error';renderBoards()}
     if(this.uid&&this.canWrite!==false){
       try{const snap=await db.doc('data/users/'+this.uid+'/profile').get();
         if(snap.exists){const r=snap.data();const d=Profile.data;
           d.coins=Math.max(0,r.coins|0);d.owned=Array.from(new Set([...(r.owned||[]),'sedan']));d.skin=d.owned.includes(r.skin)?r.skin:'sedan';
-          if(r.name)d.name=String(r.name).slice(0,16);d.best=Math.max(d.best||0,r.best||0);LS.set('ld.profile',d);refreshMenu()}
+          if(r.name)d.name=String(r.name).slice(0,16);d.best=Math.max(d.best||0,r.best||0);
+          d.mapU=Array.from(new Set([...d.mapU,...(Array.isArray(r.mapU)?r.mapU:[])])).filter(id=>THEMES.some(t=>t.id===id));
+          const rr=r.mapRec||{};for(const k in rr){const a=d.mapRec[k]||(d.mapRec[k]={});for(const f of ['t','boss','level'])a[f]=Math.max(a[f]||0,+rr[k][f]||0)}
+          const rm=r.medals||{};for(const k in rm)d.medals[k]=Math.max(d.medals[k]||0,Math.min(3,rm[k]|0));
+          if(r.map&&d.mapU.includes(r.map))d.map=r.map;LS.set('ld.profile',d);refreshMenu()}
         else this.saveProfile();
       }catch(e){}
     }
   },
   saveProfile(){
     if(!this.db||!this.uid||this.canWrite===false)return;const d=Profile.data;
-    const body={coins:d.coins,owned:d.owned.slice(),skin:d.skin,name:d.name,best:d.best};
+    const body={coins:d.coins,owned:d.owned.slice(),skin:d.skin,name:d.name,best:d.best,map:d.map,mapU:d.mapU.slice(),mapRec:JSON.parse(JSON.stringify(d.mapRec)),medals:Object.assign({},d.medals)};
     this.saving=this.saving.then(()=>this.db.doc('data/users/'+this.uid+'/profile').set(body)).catch(()=>{});
   },
   async submit(run){
     if(!this.db)return{ok:false,msg:'The global leaderboard is not available in this view. Your best is saved on this device.'};
     if(!this.uid)return{ok:false,msg:'Sign in to appear on the global leaderboard.'};
     if(this.canWrite===false)return{ok:false,msg:'You have view-only access, so your score was not sent to the leaderboard.'};
-    const mine=this.board.find(r=>r.id===this.uid);let prev=mine?mine.time:0;
-    if(!mine){try{const s=await this.db.doc('scores/'+this.uid).get();if(s.exists)prev=s.data().time||0}catch(e){}}
-    if(run.time<=prev)return{ok:true,msg:'Your leaderboard best: '+fmtTime(prev)};
-    try{await this.db.doc('scores/'+this.uid).set({name:Profile.data.name,time:Math.round(run.time*10)/10,kills:run.kills,level:run.level,skin:Profile.data.skin,at:Date.now()});
-      return{ok:true,good:true,msg:'New record on the global leaderboard!'}}
+    const f='t_'+run.map,t=Math.round(run.time*10)/10;let prev=this.board.find(r=>r.id===this.uid)||null;
+    try{const s=await this.db.doc('scores/'+this.uid).get();if(s.exists)prev=s.data()}catch(e){}
+    prev=prev||{};const better=t>(+prev.time||0),betterMap=t>(+prev[f]||0);
+    if(!betterMap)return{ok:true,msg:'Your leaderboard best on this map: '+fmtTime(+prev[f]||0)};
+    const body={name:Profile.data.name,skin:Profile.data.skin,at:Date.now(),time:Math.max(+prev.time||0,t),kills:better?run.kills:(prev.kills|0),level:better?run.level:(prev.level|0)};
+    for(const th of THEMES){const v=+prev['t_'+th.id]||0;if(v>0)body['t_'+th.id]=v}body[f]=t;
+    try{await this.db.doc('scores/'+this.uid).set(body);
+      return{ok:true,good:true,msg:'New record on the '+(THEMES.find(x=>x.id===run.map)||THEME).name+' leaderboard!'}}
     catch(e){if(e&&e.code==='invalid_argument')this.canWrite=false;return{ok:false,msg:'Could not save to the leaderboard. Your best is saved on this device.'}}
   }
 };
 
-function boardHTML(limit){
+function boardHTML(limit,key){
+  key=key||'all';const f=bField(key);
   const st=Net.status;
   if(st==='offline')return '<div class="board-empty">The global leaderboard is not available right now.<br>Your personal best is saved on this device.</div>';
   if(st==='error')return '<div class="board-empty">Could not load the leaderboard right now.</div>';
   if(st==='loading')return '<div class="board-empty">Loading the leaderboard…</div>';
-  if(st==='slow'&&!Net.board.length)return '<div class="board-empty">The leaderboard has not loaded yet. You can play in the meantime.</div>';
-  const rows=Net.board.slice(0,limit);
-  if(!rows.length)return '<div class="board-empty">No scores yet. The first driver to survive takes the top spot.</div>';
+  if(st==='slow'&&!(Net.boards[key]||[]).length)return '<div class="board-empty">The leaderboard has not loaded yet. You can play in the meantime.</div>';
+  if(Net.status==='ok'&&Net.boards[key]===null)return '<div class="board-empty">Could not load this board right now.</div>';
+  const rows=(Net.boards[key]||[]).slice(0,limit);
+  if(!rows.length)return '<div class="board-empty">No scores on this board yet. The first driver to survive takes the top spot.</div>';
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  return '<ol class="board">'+rows.map((r,i)=>`<li class="${r.id===Net.uid?'me':''}"><span class="rk">${i+1}</span><span class="nm">${esc(String(r.name||'Driver').slice(0,16))}</span><span class="kl">${(r.kills|0)} kills</span><span class="tm">${fmtTime(r.time)}</span></li>`).join('')+'</ol>';
+  return '<ol class="board">'+rows.map((r,i)=>`<li class="${r.id===Net.uid?'me':''}"><span class="rk">${i+1}</span><span class="nm">${esc(String(r.name||'Driver').slice(0,16))}</span><span class="kl">${(r.kills|0)} kills</span><span class="tm">${fmtTime(+r[f]||0)}</span></li>`).join('')+'</ol>';
 }
+let boardTab='all';
 function renderBoards(){
-  $('#miniBoard').innerHTML=boardHTML(5);$('#fullBoard').innerHTML=boardHTML(50);
-  $('#miniState').textContent=Net.status==='ok'?'live':'';
+  const mk=menuMapId();$('#miniBoard').innerHTML=boardHTML(5,mk);$('#fullBoard').innerHTML=boardHTML(50,boardTab);
+  $('#miniState').textContent=(THEMES.find(t=>t.id===mk)||THEMES[0]).name;
+  for(const b of document.querySelectorAll('#boardTabs button'))b.setAttribute('aria-selected',b.dataset.k===boardTab);
 }
 
 
@@ -2592,7 +2642,7 @@ function renderDaily(el,compact){
 }
 /* ---------- save & continue an unfinished drive ---------- */
 const RUN_KEY='ld.run',RUN_V=1;
-const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh','jumps','revived'];
+const RUN_KEEP=['t','level','xp','kills','coins','L','cd','spawnAcc','nextHorde','nextBoss','bossIdx','bestCombo','boost','boostT','boostCd','slowCd','E','bh','jumps','revived','bossKills'];
 function clearRun(){try{localStorage.removeItem(RUN_KEY)}catch(e){}}
 function saveRun(){
   if(!G||attract||G.dead||!['play','pause','levelup'].includes(state))return;
@@ -2624,10 +2674,69 @@ if(window.innerWidth>900)$('#dailyBox').open=true;
 window.addEventListener('pagehide',saveRun);
 function refreshMenu(){
   renderDaily($('#dailyList'));
-  const sr=savedRun();$('#contBtn').hidden=!sr;$('#playBtn').firstChild.textContent=sr?'New drive ':'Drive! ';
+  const sr=savedRun();$('#contBtn').hidden=!sr;
   if(sr){const th=THEMES.find(t=>t.id===sr.theme);$('#contInfo').textContent=fmtTime(sr.g.t)+' · Lv '+sr.g.level+(th?' · '+th.name:'')}
+  renderMapCard();
   const d=Profile.data;$('#mBest').textContent=d.best?fmtTime(d.best):'--:--';$('#mCoins').textContent=d.coins;$('#mCoinsBadge').textContent=d.coins;$('#mSkin').textContent='Car: '+skinById(d.skin).name;
   if(document.activeElement!==$('#nick'))$('#nick').value=d.name;$('#sCoins').textContent=d.coins;
+}
+/* ---------- maps: each one is earned in the map before it (or bought with coins), plus three medals per map ---------- */
+const MAPS=[
+  {id:'downtown',price:0},
+  {id:'suburbs',price:500,need:{map:'downtown',k:'t',v:240},goal:'Survive 4:00 in Downtown'},
+  {id:'industrial',price:900,need:{map:'suburbs',k:'boss',v:2},goal:'Defeat 2 mini-bosses in one drive in The Suburbs'},
+  {id:'oldtown',price:1400,need:{map:'industrial',k:'level',v:15},goal:'Reach level 15 in Industrial Docks'},
+];
+const MEDALS=[{t:180,r:50,n:'Bronze'},{t:360,r:120,n:'Silver'},{t:600,r:250,n:'Gold'}];
+const mapName=id=>(THEMES.find(t=>t.id===id)||THEMES[0]).name;
+const mapOpen=id=>Profile.data.mapU.includes(id);
+const menuMapId=()=>MAP_VIEW||Profile.data.map;
+function needVal(m,rec,live){const k=m.need.k;return live?(k==='t'?G.t:k==='boss'?(G.bossKills||0):G.level):((rec||{})[k]||0)}
+function needFmt(m,v){return m.need.k==='t'?fmtTime(Math.min(v,m.need.v))+' / '+fmtTime(m.need.v):Math.min(v,m.need.v)+' / '+m.need.v}
+// runs every HUD frame during a drive: records, unlocks and medals happen the moment they are earned
+function mapsTick(final){
+  if(!G||!G.map)return;const d=Profile.data,id=G.map;let changed=false;
+  const rec=d.mapRec[id]||(d.mapRec[id]={t:0,boss:0,level:0});
+  const t=Math.floor(G.t),bk=G.bossKills||0;
+  if(final||t>rec.t+9||bk>rec.boss||G.level>rec.level){if(G.t>rec.t)rec.t=Math.round(G.t*10)/10;rec.boss=Math.max(rec.boss,bk);rec.level=Math.max(rec.level,G.level);changed=true}
+  for(const m of MAPS){if(!m.need||m.need.map!==id||mapOpen(m.id))continue;
+    if(needVal(m,null,true)>=m.need.v){d.mapU.push(m.id);changed=true;G.notes.unshift([mapName(m.id)+' unlocked!','A new map · pick it on the home screen','unlock'])}}
+  const have=d.medals[id]||0;let n=have;while(n<3&&G.t>=MEDALS[n].t)n++;
+  for(let i=have;i<n;i++){d.coins+=MEDALS[i].r;G.notes.push([MEDALS[i].n+' medal!','+'+MEDALS[i].r+' coins · '+fmtTime(MEDALS[i].t)+' in '+mapName(id),'medal'])}
+  if(n>have){d.medals[id]=n;changed=true}
+  if(changed)Profile.save();
+  if(!final&&G.notes.length&&(!G.banner||G.banner.t<.5)){const [a,b]=G.notes.shift();banner(a,b);sfx('chest');shake(3)}
+}
+const MEDAL_SVG=(i,on)=>`<span class="medal m${i}${on?' on':''}" title="${MEDALS[i].n}: survive ${fmtTime(MEDALS[i].t)}"><svg viewBox="0 0 24 24"><path d="M7 2h4l1 5-3 1zM17 2h-4l-1 5 3 1z" fill="#c0392b"/><circle cx="12" cy="15" r="7"/></svg><b>${fmtTime(MEDALS[i].t)}</b></span>`;
+function renderMapCard(){
+  const id=menuMapId(),i=MAPS.findIndex(m=>m.id===id),m=MAPS[i],th=THEMES.find(t=>t.id===id)||THEMES[0],d=Profile.data,open=mapOpen(id);
+  $('#mapIdx').textContent='Map '+(i+1)+' of '+MAPS.length;$('#mapName').textContent=th.name;$('#mapSub').textContent=th.sub;
+  $('#mapCard').classList.toggle('locked',!open);$('#mapLock').hidden=open;
+  const info=$('#mapInfo');const rec=d.mapRec[id]||{};
+  if(open){const md=d.medals[id]||0;
+    info.innerHTML=`<div class="medals">${[0,1,2].map(k=>MEDAL_SVG(k,k<md)).join('')}</div><div class="mbest">Best here: <b>${rec.t?fmtTime(rec.t):'--:--'}</b></div>`;
+  }else{const pm=MAPS.find(x=>x.id===m.need.map);const prevOpen=mapOpen(pm.id);const v=needVal(m,d.mapRec[m.need.map]);
+    const best=m.need.k==='t'?'best ':m.need.k==='boss'?'best drive ':'best level ';
+    info.innerHTML=`<div class="goal"><span>Goal</span>${m.goal}</div>`+
+      (prevOpen?`<div class="gbar"><i style="width:${(100*Math.min(1,v/m.need.v)).toFixed(0)}%"></i></div><small class="gtxt">Your ${best}${needFmt(m,v)}</small>`:`<small class="gtxt">Unlock ${mapName(pm.id)} first.</small>`)+
+      `<button class="buy" id="mapBuy" ${d.coins<m.price?'disabled':''}>Unlock now · <b>${m.price}</b> coins</button>`;
+    $('#mapBuy').onclick=()=>buyMap(id);
+  }
+  $('#mDistrict').textContent=th.name+' · '+th.sub;
+  const pb=$('#playBtn');pb.disabled=!open;pb.classList.toggle('lockd',!open);
+  const sr=savedRun();pb.firstChild.textContent=!open?'Locked ':sr?'New drive ':'Drive! ';
+  $('#mapPrev').disabled=i<=0;$('#mapNext').disabled=i>=MAPS.length-1;
+}
+function viewMap(step){
+  const i=MAPS.findIndex(m=>m.id===menuMapId());const j=clamp(i+step,0,MAPS.length-1);if(j===i)return;
+  const id=MAPS[j].id;const d=Profile.data;
+  if(mapOpen(id)){d.map=id;MAP_VIEW=null;Profile.save()}else MAP_VIEW=id;
+  G=null;attract=null; // the home screen city rebuilds as the chosen map
+  renderMapCard();renderBoards();
+}
+function buyMap(id){
+  const m=MAPS.find(x=>x.id===id),d=Profile.data;if(!m||mapOpen(id)||d.coins<m.price)return;
+  d.coins-=m.price;d.mapU.push(id);d.map=id;MAP_VIEW=null;Profile.save();sfx('chest');refreshMenu();renderBoards();
 }
 const Shop={preview:null};
 const METERS=[
@@ -2686,6 +2795,7 @@ let lastHud={};
 function updateHud(){
   if(!G||state==='menu')return;const c=G.car;const s=S||stats();
   const set=(id,v)=>{if(lastHud[id]!==v){lastHud[id]=v;$(id).textContent=v}};
+  if(state==='play'&&!G.dead)mapsTick(false);
   set('#clock',fmtTime(G.t));set('#hLevel',G.level);set('#hKills',G.kills);set('#hCoins',G.coins);
   set('#hptext',Math.ceil(c.hp)+' / '+Math.round(s.maxHp));
   $('#hpfill').style.transform=`scaleX(${clamp(c.hp/s.maxHp,0,1)})`;
@@ -2708,7 +2818,8 @@ function updateHud(){
 
 function startRun(){
   audioInit();const nm=$('#nick').value.trim().slice(0,14);if(nm&&nm!==Profile.data.name){Profile.data.name=nm;Profile.save()}
-  clearRun();Shop.preview=null;KEEP_THEME=state==='menu'&&!!G;newGame();S=stats();attract=null;state='play';lastHud={};showScreen(null);
+  if(MAP_VIEW&&!mapOpen(MAP_VIEW))return;MAP_VIEW=null;
+  clearRun();Shop.preview=null;KEEP_THEME=state==='menu'&&!!G&&THEME.id===Profile.data.map;newGame();S=stats();attract=null;state='play';lastHud={};showScreen(null);
   banner(THEME.name,'You start with an Auto Turret (Lv 1) · '+(input.touch?'tap NITRO when it is full':'Space fires nitro when full'));
   $('#moveHint').hidden=!input.touch;
 }
@@ -2785,7 +2896,7 @@ function revive(){
 }
 async function gameOver(){
   clearRun();state='over';showScreen('over');
-  const run={time:G.t,kills:G.kills,level:G.level};
+  mapsTick(true);const run={time:G.t,kills:G.kills,level:G.level,map:G.map};
   const bonus=Math.floor(G.t/10);const earned=G.coins+bonus;
   const d=Profile.data;d.coins+=earned;const newBest=G.t>(d.best||0);if(newBest)d.best=Math.round(G.t*10)/10;Profile.save();
   $('#oTime').textContent=fmtTime(G.t);$('#oKills').textContent=G.kills;$('#oLevel').textContent=G.level;$('#oCombo').textContent=G.bestCombo;$('#oCoins').textContent='+'+earned;renderDaily($('#overDaily'));
@@ -2794,7 +2905,7 @@ async function gameOver(){
   refreshMenu();
   setTimeout(()=>{const b=$('#againBtn');if(b&&state==='over')b.focus({preventScroll:true})},50);
 }
-function toMenu(){saveRun();state='menu';G=null;attract=null;Shop.preview=null;showScreen('menu');refreshMenu();renderBoards()}
+function toMenu(){saveRun();if(G&&state!=='menu')mapsTick(true);MAP_VIEW=null;state='menu';G=null;attract=null;Shop.preview=null;showScreen('menu');refreshMenu();renderBoards()}
 function pauseGame(){if(state!=='play')return;state='pause';saveRun();
   const owned=EVOS.filter(e=>G.E[e.id]).map(e=>'★ '+e.name).concat(UPG.filter(u=>G.L[u.id]>0).map(u=>u.name+' '+G.L[u.id])).join(' · ');$('#pauseBuild').textContent=owned?'Your build: '+owned:'No upgrades yet.';renderDaily($('#pauseDaily'));showScreen('pause')}
 function resumeGame(){if(state!=='pause')return;state='play';showScreen(null)}
@@ -2802,8 +2913,9 @@ function resumeGame(){if(state!=='pause')return;state='play';showScreen(null)}
 $('#playBtn').onclick=startRun;$('#againBtn').onclick=startRun;
 $('#shopBtn').onclick=()=>{Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
 $('#overShop').onclick=()=>{state='menu';G=null;Shop.preview=Profile.data.skin;renderShop();showScreen('shop')};
-$('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
-$('#overMenu').onclick=toMenu;
+$('#shopBack').onclick=toMenu;$('#boardBtn').onclick=()=>{boardTab=menuMapId();renderBoards();showScreen('boardScr')};$('#boardBack').onclick=toMenu;
+$('#overMenu').onclick=toMenu;$('#mapPrev').onclick=()=>viewMap(-1);$('#mapNext').onclick=()=>viewMap(1);
+for(const b of document.querySelectorAll('#boardTabs button'))b.onclick=()=>{boardTab=b.dataset.k;renderBoards()};
 $('#dqBtn').onclick=()=>{const dq=$('#dq');const open=!dq.classList.contains('open');dq.classList.toggle('open',open);dq.classList.remove('pop');
   $('#dqBtn').setAttribute('aria-expanded',open);$('#dqBtn').setAttribute('aria-label',open?'Hide daily challenges':'Show daily challenges');if(open){lastHud.dqT=0;renderDaily($('#dqList'))}};$('#revWatch').onclick=watchRevive;$('#revNo').onclick=declineRevive;$('#pauseBtn').onclick=pauseGame;$('#contBtn').onclick=continueRun;$('#resumeBtn').onclick=resumeGame;$('#quitBtn').onclick=toMenu;
 const muteLabel=()=>{$('#engineToggle').textContent='Engine sound: '+(engineOn?'on':'off');$('#muteToggle').textContent='Sound: '+(muted?'off':'on');$('#musicToggle').textContent='Music: '+(musicOn?'on':'off');const hm=$('#homeMusic');hm.textContent=musicOn?'♪ Music on':'♪ Music off';hm.setAttribute('aria-pressed',musicOn)};muteLabel();
