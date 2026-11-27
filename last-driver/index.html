@@ -234,8 +234,6 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 .touch #nitroKey{display:none}
 .touch #nitroBtn{width:104px;height:104px}
 @media (prefers-reduced-motion:reduce){#nitroBtn.ready{animation:none}#combo.pop b{animation:none}}
-#xpbar{position:absolute;top:0;left:0;right:0;height:6px;background:rgba(0,0,0,.5)}
-#xpfill{height:100%;width:0;background:var(--xp);box-shadow:0 0 10px var(--xp);transition:width .15s}
 .hud-top{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:max(14px,env(safe-area-inset-left,0px));right:max(14px,env(safe-area-inset-right,0px));
   display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .hud-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -319,7 +317,6 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 #lvBadge.pop .lvcore{animation:lvpop .6s cubic-bezier(.2,1.6,.4,1)}
 #lvBadge.pop #lvRing{stroke:#fff}
 @keyframes lvpop{0%{transform:scale(1)}30%{transform:scale(1.45);background:#fff}100%{transform:scale(1)}}
-#xpbar{height:9px!important;border-bottom:2px solid var(--ink)}
 @media (max-width:640px){#lvBadge{width:58px;height:58px}#lvBadge .lvcore{inset:8px}#lvBadge b{font-size:18px}#lvBadge small{font-size:9px}}
 @media (prefers-reduced-motion:reduce){#lvBadge.pop .lvcore{animation:none}}
 /* touch layout: smaller gauges */
@@ -335,7 +332,6 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
 
   <div id="hud" hidden>
     <div id="fx"></div><div id="dmg"></div><canvas id="fx2d"></canvas>
-    <div id="xpbar"><div id="xpfill"></div></div>
     <div class="hud-top">
       <div class="hud-group">
         <div id="lvBadge" aria-label="Car level">
@@ -2273,7 +2269,6 @@ function updateHud(){
   set('#clock',fmtTime(G.t));set('#hLevel',G.level);set('#hKills',G.kills);set('#hCoins',G.coins);
   set('#hptext',Math.ceil(c.hp)+' / '+Math.round(s.maxHp));
   $('#hpfill').style.transform=`scaleX(${clamp(c.hp/s.maxHp,0,1)})`;
-  $('#xpfill').style.width=(100*clamp(G.xp/xpNeed(G.level),0,1)).toFixed(1)+'%';
   {const xf=(100*clamp(G.xp/xpNeed(G.level),0,1)).toFixed(1);if(lastHud.xr!==xf){lastHud.xr=xf;$('#lvRing').setAttribute('stroke-dasharray',xf+' 100')}
    if(state==='play'&&lastHud.lvp!==undefined&&G.level>lastHud.lvp){const bd=$('#lvBadge');bd.classList.remove('pop');void bd.offsetWidth;bd.classList.add('pop')}if(state==='play'||lastHud.lvp===undefined)lastHud.lvp=G.level}
   const kmh=Math.round(Math.abs(c.fwd||0)*.4);set('#spd',kmh);
