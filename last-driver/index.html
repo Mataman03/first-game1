@@ -309,6 +309,19 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
   .chip{font-size:13px;padding:4px 8px}
   .stat b{font-size:20px}
 }
+
+#lvBadge{position:relative;width:70px;height:70px;flex:0 0 auto;filter:drop-shadow(3px 3px 0 var(--ink))}
+#lvBadge svg{position:absolute;inset:0;width:100%;height:100%}
+#lvRing{transition:stroke-dasharray .2s;filter:drop-shadow(0 0 4px #5cc8ff)}
+#lvBadge .lvcore{position:absolute;inset:9px;border-radius:50%;background:var(--sodium);border:3px solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;color:var(--ink)}
+#lvBadge small{font:700 10px var(--body);letter-spacing:.1em;margin-bottom:1px}
+#lvBadge b{font:400 22px var(--display);font-variant-numeric:tabular-nums}
+#lvBadge.pop .lvcore{animation:lvpop .6s cubic-bezier(.2,1.6,.4,1)}
+#lvBadge.pop #lvRing{stroke:#fff}
+@keyframes lvpop{0%{transform:scale(1)}30%{transform:scale(1.45);background:#fff}100%{transform:scale(1)}}
+#xpbar{height:9px!important;border-bottom:2px solid var(--ink)}
+@media (max-width:640px){#lvBadge{width:58px;height:58px}#lvBadge .lvcore{inset:8px}#lvBadge b{font-size:18px}#lvBadge small{font-size:9px}}
+@media (prefers-reduced-motion:reduce){#lvBadge.pop .lvcore{animation:none}}
 /* touch layout: smaller gauges */
 .touch .hud-bottom{left:max(16px,env(safe-area-inset-left,0px));transform:none;width:calc(100% - 160px)}
 .touch .speedo{width:58px;height:58px}
@@ -325,8 +338,12 @@ kbd{background:var(--plate-2);border:1px solid var(--line);border-bottom-width:3
     <div id="xpbar"><div id="xpfill"></div></div>
     <div class="hud-top">
       <div class="hud-group">
+        <div id="lvBadge" aria-label="Car level">
+          <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="7"/>
+            <circle id="lvRing" cx="32" cy="32" r="28" fill="none" stroke="#5cc8ff" stroke-width="7" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90 32 32)"/></svg>
+          <div class="lvcore"><small>LV</small><b id="hLevel">1</b></div>
+        </div>
         <div id="clock">00:00</div>
-        <div class="chip"><small>LVL</small><span id="hLevel">1</span></div>
       </div>
       <div class="hud-group">
         <div class="chip"><small>Kills</small><span id="hKills">0</span></div>
@@ -2257,6 +2274,8 @@ function updateHud(){
   set('#hptext',Math.ceil(c.hp)+' / '+Math.round(s.maxHp));
   $('#hpfill').style.transform=`scaleX(${clamp(c.hp/s.maxHp,0,1)})`;
   $('#xpfill').style.width=(100*clamp(G.xp/xpNeed(G.level),0,1)).toFixed(1)+'%';
+  {const xf=(100*clamp(G.xp/xpNeed(G.level),0,1)).toFixed(1);if(lastHud.xr!==xf){lastHud.xr=xf;$('#lvRing').setAttribute('stroke-dasharray',xf+' 100')}
+   if(state==='play'&&lastHud.lvp!==undefined&&G.level>lastHud.lvp){const bd=$('#lvBadge');bd.classList.remove('pop');void bd.offsetWidth;bd.classList.add('pop')}if(state==='play'||lastHud.lvp===undefined)lastHud.lvp=G.level}
   const kmh=Math.round(Math.abs(c.fwd||0)*.4);set('#spd',kmh);
   const pct=Math.round(clamp(Math.abs(c.fwd||0)/s.maxSpeed,0,1)*100);if(lastHud.pct!==pct){lastHud.pct=pct;$('#spdArc').setAttribute('stroke-dasharray',`${pct*.75} 100`)}
   const b=G.boss;$('#bossbar').hidden=!(b&&!b.dead);if(b&&!b.dead){set('#bossName',b.name);$('#bossfill').style.width=(100*clamp(b.hp/b.maxHp,0,1)).toFixed(1)+'%'}
